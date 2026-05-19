@@ -1,0 +1,2564 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dショッピング キャンペーン HTML ジェネレーター</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+
+  :root {
+    --bg:#1d1f21;--surf:#282a2e;--surf2:#373b41;
+    --border:#4b4f57;--border2:#626772;--text:#c5c8c6;
+    --muted:#969896;--accent:#81a2be;--green:#b5bd68;
+    --red:#cc6666;--yellow:#f0c674;--orange:#de935f;
+    --purple:#b294bb;--cyan:#8abeb7;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden}
+  body{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','ヒラギノ角ゴ ProN W3','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;font-size:18px}
+
+  /* topbar */
+  .topbar{display:flex;align-items:center;gap:14px;padding:13px 24px;border-bottom:1px solid var(--border);background:var(--surf);flex-shrink:0}
+  .logo{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','ヒラギノ角ゴ ProN W3','Noto Sans JP',sans-serif;font-size:20px;font-weight:800;letter-spacing:-0.3px;color:#fff}
+  .logo span{color:#ffffff}
+  .pill{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:15px;background:var(--accent);color:#fff;padding:3px 20px;border-radius:99px}
+  .pill.ok{background:var(--green);color:#000}
+  .mode-badge{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:12px;padding:3px 10px;border-radius:99px;display:none}
+  .mode-badge.cp{background:var(--accent);color:#fff}
+  .mode-badge.page{background:var(--orange);color:#000}
+
+
+  /* layout */
+  .workspace{flex:1;display:grid;grid-template-columns:440px 1fr;overflow:hidden;min-height:0}
+  .left{display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;min-height:0}
+  .left-static{flex-shrink:0;padding:10px 12px;display:flex;flex-direction:column;gap:9px;border-bottom:1px solid var(--border)}
+  .panel-body{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:9px;min-height:0}
+  .left-footer{flex-shrink:0;padding:10px 12px;border-top:1px solid var(--border);background:var(--surf)}
+
+  label{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:2px}
+  textarea,input[type=text],input[type=password],select{width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:6px;color:var(--text);outline:none;transition:border-color 0.2s}
+  textarea:focus,input:focus,select:focus{border-color:var(--accent)}
+  textarea::placeholder,input::placeholder{color:var(--border2)}
+  input[type=text],input[type=password]{padding:6px 10px;font-size:16px}
+  select{padding:6px 10px;font-size:16px;cursor:pointer}
+  select option{background:var(--surf2)}
+
+  .draft-area{resize:none;padding:8px;font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:14px;line-height:1.6;min-height:170px}
+  .sep{height:1px;background:var(--border)}
+  .sec-lbl{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+
+  /* CP fields */
+  .fields{display:flex;flex-direction:column;gap:10px}
+  .field{display:grid;grid-template-columns:128px 1fr;align-items:center;gap:8px}
+  .fkey{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:13px;color:var(--yellow);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  input.auto{border-color:rgba(181,189,104,.45);background:rgba(181,189,104,.06)}
+  select.auto{border-color:rgba(181,189,104,.45);background:rgba(181,189,104,.06)}
+
+  /* page-mode banner review */
+  .page-meta{display:flex;flex-direction:column;gap:8px}
+  .page-banners{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+  .bnr-row{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+  .bnr-row.warn{border-color:var(--orange)}
+  .bnr-row-head{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+  .bnr-idx{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:12px;color:var(--muted);background:var(--surf);padding:2px 8px;border-radius:4px}
+  .badge-ok{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:11px;background:rgba(181,189,104,.15);color:var(--green);border:1px solid rgba(181,189,104,.3);padding:1px 7px;border-radius:4px}
+  .badge-warn{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:11px;background:rgba(222,147,95,.15);color:var(--orange);border:1px solid rgba(222,147,95,.3);padding:1px 7px;border-radius:4px}
+  .bnr-field{display:grid;grid-template-columns:52px 1fr;align-items:center;gap:6px}
+  .bnr-fkey{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:12px;color:var(--muted);white-space:nowrap}
+
+  /* buttons */
+  .extract-btn{width:100%;padding:7px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:15px;cursor:pointer;transition:all 0.15s;letter-spacing:.5px}
+  .extract-btn:hover{border-color:var(--accent)}
+  .extract-btn:disabled{opacity:.4;cursor:not-allowed}
+  .gen-btn{width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',sans-serif;font-size:16px;font-weight:700;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px}
+  .gen-btn:hover:not(:disabled){filter:brightness(1.15);transform:translateY(-1px)}
+  .gen-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+  .spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none}
+  .gen-btn.loading .spinner{display:block}
+  .gen-btn.loading .btn-lbl{display:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .err{background:rgba(204,102,102,.1);border:1px solid rgba(204,102,102,.3);border-radius:6px;padding:9px 11px;font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:13px;color:var(--red);display:none}
+  .err.show{display:block}
+
+  /* right */
+  .right{display:flex;flex-direction:column;overflow:hidden}
+  .tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surf);flex-shrink:0;overflow-x:auto}
+  .tab{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:14px;padding:13px 18px;cursor:pointer;color:var(--muted);white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab.disabled{opacity:.3;pointer-events:none}
+  .tab-actions{margin-left:auto;display:flex;align-items:center;gap:6px;padding:0 12px}
+  .abtn{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:13px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:5px;cursor:pointer;transition:all 0.15s;white-space:nowrap;width:100px;padding:7px;text-align:center}
+  .abtn:hover{border-color:var(--accent);color:var(--accent)}
+  .abtn.dl{background:var(--green);color:#000;border-color:var(--green);font-weight:700;width:100px;padding:7px}
+  .abtn.dl:hover{filter:brightness(1.1)}
+
+  .out-area{flex:1;overflow:hidden;position:relative}
+  .pane{position:absolute;inset:0;overflow:auto;display:none}
+  .pane.active{display:block}
+  .code-pane{background:var(--bg)}
+  pre{padding:20px 24px;font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:13px;line-height:1.75;color:#c5c8c6;white-space:pre-wrap;word-break:break-all}
+
+  .empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);pointer-events:none}
+  .empty-ico{font-size:40px;opacity:.2}
+  .empty-ttl{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',sans-serif;font-size:20px;font-weight:700;opacity:.35}
+  .empty-sub{font-size:14px;opacity:.3;font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif}
+
+  .out-type{background:var(--surf);border-bottom:1px solid var(--border);padding:10px 18px;font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+  .out-type .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+
+  .workspace { }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">dショッピング <span>キャンペーン</span> ジェネレーター</div>
+  <span id="copy-status-pill" class="pill" style="display:none;background:var(--cyan);color:#000;font-size:13px;padding:1px 10px;"></span>
+  <span id="mode-badge" class="mode-badge"></span>
+  <span id="status-pill" class="pill ok" style="display:none">生成完了</span>
+  <div style="display:flex;gap:8px;margin-left:auto">
+    <button class="abtn" onclick="resetAll()">リセット</button>
+    <button class="abtn" id="copy-btn" onclick="copyActive()">コピー</button>
+<button class="abtn dl" id="dl-btn" onclick="dlActive()">ZIP DL</button>
+  </div>
+</div>
+
+
+<div class="workspace">
+  <div class="left">
+    <!-- 固定上部: textarea + 抽出ボタン -->
+    <div class="left-static">
+      <div>
+        <label>バックログの原稿</label>
+        <textarea class="draft-area" id="draft"
+          placeholder="バックログ原稿を貼り付けてください。&#10;&#10;【CPページ設定】または【ページ設定】で始まる原稿に対応。"></textarea>
+      </div>
+      <button class="extract-btn" id="ext-btn" onclick="extractFields()">
+        ✦ AIで項目を自動抽出
+      </button>
+      <div class="err" id="err-box"></div>
+    </div>
+
+    <!-- スクロール中部: フィールド / バナー一覧 -->
+    <div class="panel-body">
+
+      <!-- CP mode fields -->
+      <div id="cp-mode-ui">
+        <div class="sec-lbl">プレースホルダー確認・編集</div>
+        <div class="fields" id="fields"></div>
+      </div>
+
+      <!-- Page mode review -->
+      <div id="page-mode-ui" style="display:none">
+        <div class="sec-lbl">⚠は画像ファイル名を要確認</div>
+        <div class="page-meta" id="page-meta"></div>
+        <div class="page-banners" id="page-banners"></div>
+      </div>
+    </div>
+
+    <!-- 固定下部: 生成ボタン -->
+    <div class="left-footer">
+      <button class="gen-btn" id="gen-btn" onclick="generateAll()">
+        <div class="spinner"></div>
+        <span class="btn-lbl">全ファイルを生成</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="tabs">
+      <div class="tab active" data-tab="list"    onclick="switchTab('list')">CP一覧 スニペット</div>
+      <div class="tab"        data-tab="cp-open" onclick="switchTab('cp-open')">CPページ</div>
+      <div class="tab"        data-tab="banner"   onclick="switchTab('banner')">バナーパーツ スニペット</div>
+      <div class="tab"        data-tab="finished" onclick="switchTab('finished')" id="tab-finished" style="display:none">エントリー完了ページ</div>
+      <div class="tab-actions">
+      </div>
+    </div>
+
+    <div class="out-area">
+      <div class="empty" id="empty">
+        <div class="empty-ico">◈</div>
+        <div class="empty-ttl">原稿を入力して生成</div>
+        <div class="empty-sub">【CPページ設定】→ 3ファイルをZIPでDL　/　【ページ設定】→ バナースニペットをDL</div>
+      </div>
+
+      <div class="pane code-pane active" id="pane-list">
+        <pre id="code-list"></pre>
+      </div>
+      <div class="pane code-pane" id="pane-cp-open">
+        <pre id="code-cp-open"></pre>
+      </div>
+      <div class="pane code-pane" id="pane-banner">
+        <pre id="code-banner"></pre>
+      </div>
+      <div class="pane code-pane" id="pane-finished">
+        <pre id="code-finished"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TEMPLATE_HTML          = `<!doctype html>
+<html lang="ja">
+<head>
+	<!-- Google Tag Manager -->
+	<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-WSMFSBX');<\/script>
+	<!-- End Google Tag Manager -->
+	<meta charset="UTF-8">
+	<title>{{CP_NAME}}</title>
+	<link rel="stylesheet" href="/excludes/ds/css/frame.css">
+	<link rel="stylesheet" href="/excludes/ds/css/default.css">
+	<link rel="canonical" href="https://dshopping.docomo.ne.jp/campaign/cp{{CP_ID}}/index.html">
+	<link rel="apple-touch-icon-precomposed" href="/icon/icd_docomoliveux_dshopping_192.png">
+
+	<script src="/excludes/ds/js/cmn.js"><\/script>
+	<script src="/excludes/ds/js/nav-sp.js"><\/script>
+	<script src="/excludes/ds/js/_framework.js"><\/script>
+
+	<meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
+	<meta name="google-site-verification" content="ocuekU4QshU3Y2NmsrswldfSlbtLenLFQxQibB_1rqM">
+	<meta name="description" content="{{CP_NAME}}のページです。この機会にdポイントがたまる・つかえる通販サイト「dショッピング」でお得なお買い物をお楽しみください。">
+	<meta name="keywords" content="キャンペーン,ポイント,通販,電話料金合算払い,dショッピング">
+	<meta property="og:type" content="article">
+	<meta property="og:site_name" content="dショッピング">
+	<meta property="og:title" content="{{CP_NAME}}">
+	<meta property="og:description" content="{{CP_NAME}}のページです。この機会にdポイントがたまる・つかえる通販サイト「dショッピング」でお得なお買い物をお楽しみください。">
+	<meta property="og:url" content="https://dshopping.docomo.ne.jp/campaign/cp{{CP_ID}}/index.html">
+	<meta property="og:image" content="https://dshopping.docomo.ne.jp/campaign/cp{{CP_ID}}/img/cp{{CP_ID}}_300x300.jpg">
+	<meta property="fb:app_id" content="269393483208014">
+	<meta name="twitter:site" content="@docomo">
+	<meta name="twitter:card" content="summary">
+	<meta name="twitter:title" content="{{CP_NAME}}">
+	<meta name="twitter:description" content="{{CP_NAME}}のページです。この機会にdポイントがたまる・つかえる通販サイト「dショッピング」でお得なお買い物をお楽しみください。">
+
+	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+	<link rel="stylesheet" href="/excludes/ds/css/partner.css">
+	<link rel="stylesheet" href="/campaign/css/campaign_common.css">
+
+	<script src="/excludes/ds/js/module.js"><\/script>
+	<script src="/js/sp/access_check.js"><\/script>
+	<script type="text/javascript" src="/excludes/ds/js/_gtm.js"><\/script>
+	<script src="/parts/js/loginInfo.js"><\/script>
+	<script src="/partner/js/view_timer.js"><\/script>
+</head>
+<body id="partnerlist">
+	<!-- Google Tag Manager (noscript) -->
+	<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WSMFSBX" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+	<!-- End Google Tag Manager (noscript) -->
+	<div id="fwCms_wrapper" class="ds-wrap">
+		<header class="header">
+			<div class="fwCms_box frame_HD" frame_id="HD">
+				<!-- ▼コンポ―ネント/header -->
+				<!--▼#include virtual="/include/header.html" -->
+				<header class="mdl-color-text--white header--products" id="header">
+					<button class="btn_menu" id="sidebarBtn" type="button"></button>
+					<span id="site_name"><a href="/"><img src="/excludes/ds/img/logo.svg" alt="dショッピング"></a></span>
+					<div class="header-menu" id="headerMenu"></div>
+				</header>
+				<script>$(function(){$("header.header").next().addClass("mainArea--products")});<\/script>
+				<!--▲#include virtual="/include/header.html" -->
+				<!-- ▲コンポ―ネント/header -->
+			</div>
+		</header>
+		<div class="mainArea">
+			<div class="fwCms_contentsArea fwCms_leftMenu">
+				<div class="fwCms_box frame_LM" frame_id="LM">
+					<script src="/excludes/ds/js/dsFOSH210.js"><\/script>
+					<script src="/excludes/ds/js/formatAccount.js"><\/script>
+					<!-- ▼コンポ―ネント/ハンバーガーメニュー（サイドメニュー） -->
+					<nav class="sidebar js-offcanvas-left" id="sidebar">
+						<div id="sidebarChild">
+							<section id="userInfo">
+								<h2>ユーザー設定</h2>
+								<span class="js-side-menu-login-info"></span>
+							</section>
+							<div id="sideInc"></div>
+							<!--サイドメニューinc!-->
+							<section class="login-box js-side-menu-login-button">
+								<a class="btn btn_logout pop_other_account cboxElement" title="" href="/member/authentication/relogin">ログアウト</a>
+							</section>
+						</div>
+					</nav>
+					<!-- ▲コンポ―ネント/ハンバーガーメニュー（サイドメニュー） -->
+				</div>
+				<div class="fwCms_box frame_MB ds-container" frame_id="MB">
+					<nav id="breadcrumbs">
+						<ul class="category-bread-link">
+							<li><a href="/">トップページ</a></li>
+							<li><a href="/campaign">キャンペーン</a></li>
+							<li><span>{{CP_NAME}}</span></li>
+						</ul>
+					</nav>
+					<div class="dsContent">
+						<section class="section--box">
+							<h1 class="MV">
+								<img src="/campaign/cp{{CP_ID}}/img/cp{{CP_ID}}_{{BNR_SIZE}}.jpg" alt="{{CP_NAME}}" class="img-fit nosp"><!-- // {{BNR_SIZE}} PC用　980x150(px) バックログの添付ファイルにない場合はSP版を使用 -->
+								<img src="/campaign/cp{{CP_ID}}/img/cp{{CP_ID}}_{{BNR_SIZE}}.jpg" alt="{{CP_NAME}}" class="img-fit nopc"><!-- // {{BNR_SIZE}} SP用　640x200(px) バックログの添付ファイルにない場合はPC用を使用 -->
+							</h1>
+							<div class="mainText lh50p"><strong>{{START_DATETIME}} ～ <br class="nopc">{{END_DATETIME}}まで</strong></div>
+							<div class="lead t_c mgnb30"><p>{{CP_LEAD}}</p></div>
+
+							<!-- 終了おび★エントリーボタンはコメントアウト -->
+							<div class="closed-block view_timer" data-start-date="{{END_DATETIME_PLUS_1MIN}}" style="display:none"><!-- // 112行目の日付（yyyy/mm/dd hh:mm"）は\`data-end-date="yyyy/mm/dd hh:mm"\`から1分後の日時を入力する -->
+								<p class="camp-close">こちらのキャンペーンは<br class="nopc">終了いたしました</p>
+								<div class="bnt">
+									<span class="bnt-st"><a class="bnt-target bnt-target-col" href="/campaign">開催中のキャンペーン ＞</a></span>
+								</div>
+							</div>
+						</section>
+						<div class="shop-links view_timer" data-end-date="{{END_DATETIME_TIMER}}"><!-- // 終了日時をyyyy/mm/dd hh:mm形式で入力 -->
+							<a class="shop-link no-deco t_c" href="{{TARGET_URL}}">
+								<p class="link-txt mb0"><span class="txt"><span class="nosp">【 {{SHOP_NAME}} 】</span>キャンペーン対象商品はこちら</span></p>
+							</a>
+						</div>
+						<section class="section--box">
+							<div class="campDetail">
+								<div class="overview">
+									<dl>
+										<dt class="mgnt0">キャンペーン期間</dt>
+										<dd>{{START_DATETIME}} ～ {{END_DATETIME}}まで</dd>
+
+										<dt>キャンペーン対象者</dt>
+										<dd>dショッピングで対象商品を<!--n,nnn円以上（送料込・税込）-->購入し、キャンペーン期間中に正常に注文完了された方</dd>
+
+										<dt>キャンペーン対象商品</dt>
+										<dd>{{SHOP_NAME}}の<!-- 全商品 --><!-- キャンペーン対象商品は<a href="{{TARGET_URL}}">こちら</a> --></dd><!-- 対象商品：全商品 → \`全商品\`で生成　対象商品：一部商品 → \`キャンペーン対象商品は<a href="{{TARGET_URL}}">こちら\`で生成 -->
+
+										<dt>キャンペーン特典</dt>
+										<dd>dポイント {{POINT_RATE}}倍<br>
+											<ul class="asterisk-list">
+												<li>ポイント{{POINT_RATE}}倍とは、通常100円（税抜）のご利用につきdポイントが1ポイント進呈されるところ、さらにdポイント（期間・用途限定）を{{POINT_RATE_MINUS_1}}ポイント進呈します。</li>
+											</ul>
+										</dd>
+
+										<dt>ポイント進呈時期</dt>
+										<dd>{{POINT_YM_1}}下旬 ～ {{POINT_YM_2}}上旬予定<br>
+
+											<ul class="asterisk-list">
+												<li>ポイント進呈結果はdショッピングサイト上部のポイント欄からご確認ください。</li>
+											</ul>
+										</dd>
+
+										<dt>ポイント有効期限</dt>
+										<dd>進呈日から約4週間<br>
+											<ul class="asterisk-list">
+												<li>ポイント有効期限はdショッピングサイト上部のポイント欄からご確認ください。</li>
+											</ul>
+										</dd>
+
+										<dt>注意事項</dt>
+										<dd>
+											<ul class="asterisk-list">
+												<li>本キャンペーンで獲得できるポイントは、dポイント（期間・用途限定）です。</li>
+												<li>dポイント（期間・用途限定）は、ドコモコンテンツ、dポイント加盟店で利用できます。一部サービスでご利用いただけない場合がございます。詳しくは、ドコモのホームページ <a href="https://dpoint.docomo.ne.jp/guide/about_dpoint/index.html">dポイントについて</a> をご確認ください。</li>
+												<li>dポイント（期間・用途限定）の進呈対象はdポイントクラブ会員限定です。</li>
+												<li>他のキャンペーンと本キャンペーンは併用可能です。</li>
+												<li>それぞれのキャンペーン条件を満たしている場合、どちらのキャンペーンも適用されます。</li>
+												<li>ポイントの権利の譲渡はできません。</li>
+												<li>不正行為、利用規約違反、その他運営上の趣旨に反していると弊社が判断した場合はポイント進呈対象外といたします。</li>
+												<li>このキャンペーンは予告無く変更・中止させていただく場合がございます。</li>
+												<li>ショッピングのメンテナンスなどの関係でキャンペーンに参加できない場合がございます。</li>
+												<li>ご注文をキャンセルされた場合は、キャンペーンの対象外となります。</li>
+												<li>ポイント進呈対象は電話料金合算払い、クレジットカード（dカード含む）でのご注文金額分に関して、適応されます。ポイントご利用分は対象外です。</li>
+												<li>特典ポイントは、ご注文金額の通常進呈させていただきます1倍分を除いた、残りの倍率をdポイント（期間・用途限定）にて進呈いたします。</li>
+												<li>全額ポイント利用でご注文いただいた場合は、キャンペーンの対象外となります。</li>
+												<li>送料はポイント計算対象のご注文金額に含みます。</li>
+												<li>消費税はポイント計算対象のご注文金額に含みません。</li>
+												<li>クーポンをご利用いただいたお買い物の場合、商品代金合計金額からご利用クーポン分を差し引いた税抜金額が、ポイント進呈および倍付の対象となります。クーポンご利用分はポイント進呈・倍付の対象となりません。</li>
+												<li>キャンペーン対象商品は、特設ページに掲載の商品のみとなります。dショッピング内で扱っている類似商品（サイズ違い・色違い等）はキャンペーン対象外となりますのでご注意願います。</li>
+												<li>在庫数に限りがございますので、商品によってはキャンペーン期間中に在庫が無くなる場合がございます。</li>
+												<li>本キャンペーンは期間中、何回でもご参加いただけます。</li>
+												{{POINT_LIMIT_LI}}<!-- 付与上限：無し → li削除 / 数字あり → li出力　テキスト → 本キャンペーンの進呈ポイント上限はn,nnnポイントとなります。 -->
+											</ul>
+										</dd>
+									</dl>
+								</div>
+							</div>
+						</section>
+					</div>
+					<section class="about-ds bgc-gu">
+						<script type="text/javascript">$(document).ready(function(){$('.bgc-gu').load('/inc/cpbtm.html');});<\/script>
+					</section>
+					<div class="link--boxlist-1">
+						<ul class="link-list link-back icn-home">
+							<li><a href="/"><span>トップページに戻る</span></a></li>
+						</ul>
+					</div>
+					<footer>
+						<div class="footer_inner">
+							<div class="ds-row">
+								<div class="col-6">
+									<ul>
+										<li><a href="/products_search/index.html">商品を探す</a></li>
+										<li><a href="/member/favorite">お気に入り商品</a></li>
+										<li><a href="/member/history">最近チェックした商品</a></li>
+										<li><a href="/genre">取り扱いジャンル一覧</a></li>
+										<li><a href="/partner">取り扱い店舗一覧</a></li>
+									</ul>
+									<ul>
+										<li><a href="/article">おすすめ記事一覧</a></li>
+										<li><a href="/cart">カート</a></li>
+										<li><a href="/member/mypage">マイページ</a></li>
+										<li><a href="https://service.smt.docomo.ne.jp/cgi7/set/changeinfoview?serviceurl=https%3A%2F%2Fshopping.dmkt-sp.jp%2F">ポイント表示設定</a></li>
+										<li><a href="/guide">ご利用ガイド</a></li>
+									</ul>
+								</div>
+								<div class="col-6">
+									<ul>
+										<li><a href="/help">ヘルプ／お問い合わせ</a></li>
+										<li><a href="/information">お知らせ</a></li>
+										<li><a href="/guide/frequently-asked-questions">よくあるご質問</a></li>
+										<li><a href="/welcome">はじめての方へ</a></li>
+									</ul>
+									<ul>
+										<li><a href="/term/terms-of-service">ご利用規約</a></li>
+										<li><a href="https://www.nttdocomo.co.jp/utility/privacy/">プライバシーポリシー</a></li>
+										<li><a href="/term/tokushouhou">特定商取引法に関する表示</a></li>
+									</ul>
+								</div>
+							</div>
+						</div>
+						<address>&copy; NTT DOCOMO</address>
+					</footer>
+				</div>
+			</div>
+		</div>
+		<div class="footer">
+			<div class="fwCms_box frame_FT" frame_id="FT">
+				<div id="sidebar-category" class="js-offcanvas-right">
+		 			<div id="sidebar-categoryInner" class="sidebar-category-inner">
+						<section class="nav-category-section" id="search_genre"><h3>ジャンルから探す</h3></section>
+						<section class="nav-category-section" id="search_shop"><h3>お店から探す</h3></section>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script src="/excludes/ds/js/dsFOSH201.js"><\/script>
+	<script src="/js/sp/access_check.js"><\/script>
+</body>
+</html>
+`;
+const TEMPLATE_ENTRY_HTML    = `<!doctype html>
+<html lang="ja">
+<head>
+	<!-- Google Tag Manager -->
+	<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-WSMFSBX');<\/script>
+	<!-- End Google Tag Manager -->
+	<meta charset="UTF-8">
+	<title>{{CP_NAME}}</title>
+	<link rel="stylesheet" href="/excludes/ds/css/frame.css">
+	<link rel="stylesheet" href="/excludes/ds/css/default.css">
+	<link rel="canonical" href="https://dshopping.docomo.ne.jp/campaign/cp{{CP_ID}}/index.html">
+	<link rel="apple-touch-icon-precomposed" href="/icon/icd_docomoliveux_dshopping_192.png">
+
+	<script src="/excludes/ds/js/cmn.js"><\/script>
+	<script src="/excludes/ds/js/nav-sp.js"><\/script>
+	<script src="/excludes/ds/js/_framework.js"><\/script>
+
+	<meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
+	<meta name="google-site-verification" content="ocuekU4QshU3Y2NmsrswldfSlbtLenLFQxQibB_1rqM">
+	<meta name="description" content="{{CP_NAME}}のページです。この機会にdポイントがたまる・つかえる通販サイト「dショッピング」でお得なお買い物をお楽しみください。">
+	<meta name="keywords" content="キャンペーン,ポイント,通販,電話料金合算払い,dショッピング">
+	<meta property="og:type" content="article">
+	<meta property="og:site_name" content="dショッピング">
+	<meta property="og:title" content="{{CP_NAME}}">
+	<meta property="og:description" content="{{CP_NAME}}のページです。この機会にdポイントがたまる・つかえる通販サイト「dショッピング」でお得なお買い物をお楽しみください。">
+	<meta property="og:url" content="https://dshopping.docomo.ne.jp/campaign/cp{{CP_ID}}/index.html">
+	<meta property="og:image" content="https://dshopping.docomo.ne.jp/campaign/cp{{CP_ID}}/img/cp{{CP_ID}}_300x300.jpg">
+	<meta property="fb:app_id" content="269393483208014">
+	<meta name="twitter:site" content="@docomo">
+	<meta name="twitter:card" content="summary">
+	<meta name="twitter:title" content="{{CP_NAME}}">
+	<meta name="twitter:description" content="{{CP_NAME}}のページです。この機会にdポイントがたまる・つかえる通販サイト「dショッピング」でお得なお買い物をお楽しみください。">
+
+	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+	<link rel="stylesheet" href="/excludes/ds/css/partner.css">
+	<link rel="stylesheet" href="/campaign/css/campaign_common.css">
+
+	<script src="/excludes/ds/js/module.js"><\/script>
+	<script src="/js/sp/access_check.js"><\/script>
+	<script type="text/javascript" src="/excludes/ds/js/_gtm.js"><\/script>
+	<script src="/parts/js/loginInfo.js"><\/script>
+	<script src="/partner/js/view_timer.js"><\/script>
+</head>
+<body id="partnerlist">
+	<!-- Google Tag Manager (noscript) -->
+	<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WSMFSBX" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+	<!-- End Google Tag Manager (noscript) -->
+	<div id="fwCms_wrapper" class="ds-wrap">
+		<header class="header">
+			<div class="fwCms_box frame_HD" frame_id="HD">
+				<!-- ▼コンポ―ネント/header -->
+				<!--▼#include virtual="/include/header.html" -->
+				<header class="mdl-color-text--white header--products" id="header">
+					<button class="btn_menu" id="sidebarBtn" type="button"></button>
+					<span id="site_name"><a href="/"><img src="/excludes/ds/img/logo.svg" alt="dショッピング"></a></span>
+					<div class="header-menu" id="headerMenu"></div>
+				</header>
+				<script>$(function(){$("header.header").next().addClass("mainArea--products")});<\/script>
+				<!--▲#include virtual="/include/header.html" -->
+				<!-- ▲コンポ―ネント/header -->
+			</div>
+		</header>
+		<div class="mainArea">
+			<div class="fwCms_contentsArea fwCms_leftMenu">
+				<div class="fwCms_box frame_LM" frame_id="LM">
+					<script src="/excludes/ds/js/dsFOSH210.js"><\/script>
+					<script src="/excludes/ds/js/formatAccount.js"><\/script>
+					<!-- ▼コンポ―ネント/ハンバーガーメニュー（サイドメニュー） -->
+					<nav class="sidebar js-offcanvas-left" id="sidebar">
+						<div id="sidebarChild">
+							<section id="userInfo">
+								<h2>ユーザー設定</h2>
+								<span class="js-side-menu-login-info"></span>
+							</section>
+							<div id="sideInc"></div>
+							<!--サイドメニューinc!-->
+							<section class="login-box js-side-menu-login-button">
+								<a class="btn btn_logout pop_other_account cboxElement" title=" " href="/member/authentication/relogin">ログアウト</a>
+							</section>
+						</div>
+					</nav>
+					<!-- ▲コンポ―ネント/ハンバーガーメニュー（サイドメニュー） -->
+				</div>
+				<div class="fwCms_box frame_MB ds-container" frame_id="MB">
+					<nav id="breadcrumbs">
+						<ul class="category-bread-link">
+							<li><a href="/">トップページ</a></li>
+							<li><a href="/campaign">キャンペーン</a></li>
+							<li><span>{{CP_NAME}}</span></li>
+						</ul>
+					</nav>
+					<div class="dsContent">
+						<section class="section--box">
+							<h1 class="MV">
+								<img src="/campaign/cp{{CP_ID}}/img/cp{{CP_ID}}_{{BNR_SIZE}}.jpg" alt="{{CP_NAME}}" class="img-fit nosp"><!-- // {{BNR_SIZE}} PC用　980x150(px) バックログの添付ファイルにない場合はSP版を使用 -->
+								<img src="/campaign/cp{{CP_ID}}/img/cp{{CP_ID}}_{{BNR_SIZE}}.jpg" alt="{{CP_NAME}}" class="img-fit nopc"><!-- // {{BNR_SIZE}} SP用　640x200(px) バックログの添付ファイルにない場合はPC用を使用 -->
+							</h1>
+							<div class="mainText lh50p"><strong>{{START_DATETIME}} ～ <br class="nopc">{{END_DATETIME}}まで</strong></div>
+							<div class="lead t_c mgnb30"><p>{{CP_LEAD}}</p></div>
+
+							<!-- 終了おび★エントリーボタンはコメントアウト -->
+							<div class="closed-block view_timer" data-start-date="{{END_DATETIME_PLUS_1MIN}}" style="display:none"><!-- // 112行目の日付（yyyy/mm/dd hh:mm"）は\`data-end-date="yyyy/mm/dd hh:mm"\`から1分後の日時を入力する -->
+								<p class="camp-close">こちらのキャンペーンは<br class="nopc">終了いたしました</p>
+								<div class="bnt">
+									<span class="bnt-st"><a class="bnt-target bnt-target-col" href="/campaign">開催中のキャンペーン ＞</a></span>
+								</div>
+							</div>
+						</section>
+						<!-- チェック＆エントリー -->
+						<section class="section--box">
+							<div class="entry-block view_timer" data-end-date="{{END_DATETIME_TIMER}}">
+								<div class="checkBox"><input type="checkbox" id="check"><label for="check">メルマガ購読に同意する</label></div>
+								<div class="entryBtn02"><input type="image" src="/campaign/img/btn_01.png" alt="エントリーボタン" id="submit" onclick="location.href='{{CAROL}}'"></div>
+								<script>$(function(){$('#submit').css({opacity:"0.5",cursor:"default"}).prop('disabled',!0);$('#check').on('click',function(){if($(this).prop('checked')==!0){$('#submit').css({opacity:"1",cursor:"pointer"}).prop('disabled',!1)}else{$('#submit').css({opacity:"0.5",cursor:"default"}).prop('disabled',!0)}})});<\/script>
+								<div class="campAttention">
+									<ul class="asterisk-list">
+										<li>キャンペーンの参加にはエントリーが必要です。</li>
+										<li>Wi-Fiで接続している方は、エントリー前に必ずdアカウントでログインを行うか、dアカウントを新規発行ください。<br><a href="/member/authentication">dアカウント発行はこちらから</a></li>
+										<li>本キャンペーンにエントリーいただくと、dショッピング・dショッピングサンプル百貨店のメールサービスを配信させていただきます。予めご了承ください。</li>
+									</ul>
+								</div>
+							</div>
+						</section>
+
+						<section class="section--box">
+							<div class="campDetail">
+								<div class="overview">
+									<dl>
+										<dt class="mgnt0">キャンペーン期間</dt>
+										<dd>{{START_DATETIME}} ～ {{END_DATETIME}}まで</dd>
+
+										<dt>キャンペーン対象者</dt>
+										<dd>
+											以下を全て満たすお客さまが対象となります。
+											<ul class="square-list">
+												<li>キャンペーン期間中に本キャンペーンにエントリーされた方</li>
+												<li>dショッピングで対象商品を<!--n,nnn円以上（送料込・税込）-->購入し、キャンペーン期間中に正常に注文完了された方</li>
+												<li>dショッピングメールサービス、dショッピングサンプル百貨店メールサービスを、ポイント進呈日まで継続して購読された方<br>※進呈日以前に上記メールサービスの受信解除の設定をされると進呈対象外となります。</li>
+											</ul>
+										</dd>
+
+										<dt>キャンペーン対象商品</dt>
+										<dd>{{SHOP_NAME}}の<!-- 全商品 --><!-- キャンペーン対象商品は<a href="{{TARGET_URL}}">こちら</a> --></dd><!-- 対象商品：全商品 → \`全商品\`で生成　対象商品：一部商品 → \`キャンペーン対象商品は<a href="{{TARGET_URL}}">こちら\`で生成 -->
+
+										<dt>キャンペーン特典</dt>
+										<dd>dポイント {{POINT_RATE}}倍<br>
+											<ul class="asterisk-list">
+												<li>ポイント{{POINT_RATE}}倍とは、通常100円（税抜）のご利用につきdポイントが1ポイント進呈されるところ、さらにdポイント（期間・用途限定）を{{POINT_RATE_MINUS_1}}ポイント進呈します。</li>
+											</ul>
+										</dd>
+
+										<dt>ポイント進呈時期</dt>
+										<dd>{{POINT_YM_1}}下旬 ～ {{POINT_YM_2}}上旬予定<br>
+
+											<ul class="asterisk-list">
+												<li>ポイント進呈結果はdショッピングサイト上部のポイント欄からご確認ください。</li>
+											</ul>
+										</dd>
+
+										<dt>ポイント有効期限</dt>
+										<dd>進呈日から約4週間<br>
+											<ul class="asterisk-list">
+												<li>ポイント有効期限はdショッピングサイト上部のポイント欄からご確認ください。</li>
+											</ul>
+										</dd>
+
+										<dt>注意事項</dt>
+										<dd>
+											<ul class="asterisk-list">
+												<li>本キャンペーンで獲得できるポイントは、dポイント（期間・用途限定）です。</li>
+												<li>dポイント（期間・用途限定）は、ドコモコンテンツ、dポイント加盟店で利用できます。一部サービスでご利用いただけない場合がございます。詳しくは、ドコモのホームページ <a href="https://dpoint.docomo.ne.jp/guide/about_dpoint/index.html">dポイントについて</a> をご確認ください。</li>
+												<li>dポイント（期間・用途限定）の進呈対象はdポイントクラブ会員限定です。</li>
+												<li>他のキャンペーンと本キャンペーンは併用可能です。</li>
+												<li>それぞれのキャンペーン条件を満たしている場合、どちらのキャンペーンも適用されます。</li>
+												<li>ポイントの権利の譲渡はできません。</li>
+												<li>不正行為、利用規約違反、その他運営上の趣旨に反していると弊社が判断した場合はポイント進呈対象外といたします。</li>
+												<li>このキャンペーンは予告無く変更・中止させていただく場合がございます。</li>
+												<li>ショッピングのメンテナンスなどの関係でキャンペーンに参加できない場合がございます。</li>
+												<li>ご注文をキャンセルされた場合は、キャンペーンの対象外となります。</li>
+												<li>ポイント進呈対象は電話料金合算払い、クレジットカード（dカード含む）でのご注文金額分に関して、適応されます。ポイントご利用分は対象外です。</li>
+												<li>特典ポイントは、ご注文金額の通常進呈させていただきます1倍分を除いた、残りの倍率をdポイント（期間・用途限定）にて進呈いたします。</li>
+												<li>全額ポイント利用でご注文いただいた場合は、キャンペーンの対象外となります。</li>
+												<li>送料はポイント計算対象のご注文金額に含みます。</li>
+												<li>消費税はポイント計算対象のご注文金額に含みません。</li>
+												<li>クーポンをご利用いただいたお買い物の場合、商品代金合計金額からご利用クーポン分を差し引いた税抜金額が、ポイント進呈および倍付の対象となります。クーポンご利用分はポイント進呈・倍付の対象となりません。</li>
+												<li>キャンペーン対象商品は、特設ページに掲載の商品のみとなります。dショッピング内で扱っている類似商品（サイズ違い・色違い等）はキャンペーン対象外となりますのでご注意願います。</li>
+												<li>在庫数に限りがございますので、商品によってはキャンペーン期間中に在庫が無くなる場合がございます。</li>
+												<li>本キャンペーンは期間中、何回でもご参加いただけます。</li>
+												{{POINT_LIMIT_LI}}<!-- 付与上限：無し → li削除 / 数字あり → li出力　テキスト → 本キャンペーンの進呈ポイント上限はn,nnnポイントとなります。 -->
+											</ul>
+										</dd>
+									</dl>
+								</div>
+							</div>
+						</section>
+					</div>
+					<section class="about-ds bgc-gu">
+						<script type="text/javascript">$(document).ready(function(){$('.bgc-gu').load('/inc/cpbtm.html');});<\/script>
+					</section>
+					<div class="link--boxlist-1">
+						<ul class="link-list link-back icn-home">
+							<li><a href="/"><span>トップページに戻る</span></a></li>
+						</ul>
+					</div>
+					<footer>
+						<div class="footer_inner">
+							<div class="ds-row">
+								<div class="col-6">
+									<ul>
+										<li><a href="/products_search/index.html">商品を探す</a></li>
+										<li><a href="/member/favorite">お気に入り商品</a></li>
+										<li><a href="/member/history">最近チェックした商品</a></li>
+										<li><a href="/genre">取り扱いジャンル一覧</a></li>
+										<li><a href="/partner">取り扱い店舗一覧</a></li>
+									</ul>
+									<ul>
+										<li><a href="/article">おすすめ記事一覧</a></li>
+										<li><a href="/cart">カート</a></li>
+										<li><a href="/member/mypage">マイページ</a></li>
+										<li><a href="https://service.smt.docomo.ne.jp/cgi7/set/changeinfoview?serviceurl=https%3A%2F%2Fshopping.dmkt-sp.jp%2F">ポイント表示設定</a></li>
+										<li><a href="/guide">ご利用ガイド</a></li>
+									</ul>
+								</div>
+								<div class="col-6">
+									<ul>
+										<li><a href="/help">ヘルプ／お問い合わせ</a></li>
+										<li><a href="/information">お知らせ</a></li>
+										<li><a href="/guide/frequently-asked-questions">よくあるご質問</a></li>
+										<li><a href="/welcome">はじめての方へ</a></li>
+									</ul>
+									<ul>
+										<li><a href="/term/terms-of-service">ご利用規約</a></li>
+										<li><a href="https://www.nttdocomo.co.jp/utility/privacy/">プライバシーポリシー</a></li>
+										<li><a href="/term/tokushouhou">特定商取引法に関する表示</a></li>
+									</ul>
+								</div>
+							</div>
+						</div>
+						<address>&copy; NTT DOCOMO</address>
+					</footer>
+				</div>
+			</div>
+		</div>
+		<div class="footer">
+			<div class="fwCms_box frame_FT" frame_id="FT">
+				<div id="sidebar-category" class="js-offcanvas-right">
+		 			<div id="sidebar-categoryInner" class="sidebar-category-inner">
+						<section class="nav-category-section" id="search_genre"><h3>ジャンルから探す</h3></section>
+						<section class="nav-category-section" id="search_shop"><h3>お店から探す</h3></section>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script src="/excludes/ds/js/dsFOSH201.js"><\/script>
+	<script src="/js/sp/access_check.js"><\/script>
+</body>
+</html>
+`;
+const TEMPLATE_FINISHED_HTML = `<!doctype html>
+<html lang="ja">
+<head>
+	<!-- Google Tag Manager -->
+	<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-WSMFSBX');<\/script>
+	<!-- End Google Tag Manager -->
+	<meta charset="UTF-8">
+	<title>{{CP_NAME}}</title>
+	<link rel="stylesheet" href="/excludes/ds/css/frame.css">
+	<link rel="stylesheet" href="/excludes/ds/css/default.css">
+	<link rel="canonical" href="https://dshopping.docomo.ne.jp/campaign/cp{{CP_ID}}/index.html">
+	<link rel="apple-touch-icon-precomposed" href="/icon/icd_docomoliveux_dshopping_192.png">
+
+	<script src="/excludes/ds/js/cmn.js"><\/script>
+	<script src="/excludes/ds/js/nav-sp.js"><\/script>
+	<script src="/excludes/ds/js/_framework.js"><\/script>
+
+	<meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
+	<meta name="google-site-verification" content="ocuekU4QshU3Y2NmsrswldfSlbtLenLFQxQibB_1rqM">
+	<meta name="description" content="{{CP_NAME}}のページです。この機会にdポイントがたまる・つかえる通販サイト「dショッピング」でお得なお買い物をお楽しみください。">
+	<meta name="keywords" content="キャンペーン,ポイント,通販,電話料金合算払い,dショッピング">
+	<meta property="og:type" content="article">
+	<meta property="og:site_name" content="dショッピング">
+	<meta property="og:title" content="{{CP_NAME}}">
+	<meta property="og:description" content="{{CP_NAME}}のページです。この機会にdポイントがたまる・つかえる通販サイト「dショッピング」でお得なお買い物をお楽しみください。">
+	<meta property="og:url" content="https://dshopping.docomo.ne.jp/campaign/cp{{CP_ID}}/index.html">
+	<meta property="og:image" content="https://dshopping.docomo.ne.jp/campaign/cp{{CP_ID}}/img/cp{{CP_ID}}_300x300.jpg">
+	<meta property="fb:app_id" content="269393483208014">
+	<meta name="twitter:site" content="@docomo">
+	<meta name="twitter:card" content="summary">
+	<meta name="twitter:title" content="{{CP_NAME}}">
+	<meta name="twitter:description" content="{{CP_NAME}}のページです。この機会にdポイントがたまる・つかえる通販サイト「dショッピング」でお得なお買い物をお楽しみください。">
+
+	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+	<link rel="stylesheet" href="/excludes/ds/css/partner.css">
+	<link rel="stylesheet" href="/campaign/css/campaign_common.css">
+
+	<script src="/excludes/ds/js/module.js"><\/script>
+	<script src="/js/sp/access_check.js"><\/script>
+	<script type="text/javascript" src="/excludes/ds/js/_gtm.js"><\/script>
+	<script src="/parts/js/loginInfo.js"><\/script>
+	<script src="/partner/js/view_timer.js"><\/script>
+</head>
+<body id="partnerlist">
+	<!-- Google Tag Manager (noscript) -->
+	<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WSMFSBX" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+	<!-- End Google Tag Manager (noscript) -->
+	<div id="fwCms_wrapper" class="ds-wrap">
+		<header class="header">
+			<div class="fwCms_box frame_HD" frame_id="HD">
+				<!-- ▼コンポ―ネント/header -->
+				<!--▼#include virtual="/include/header.html" -->
+				<header class="mdl-color-text--white header--products" id="header">
+					<button class="btn_menu" id="sidebarBtn" type="button"></button>
+					<span id="site_name"><a href="/"><img src="/excludes/ds/img/logo.svg" alt="dショッピング"></a></span>
+					<div class="header-menu" id="headerMenu"></div>
+				</header>
+				<script>$(function(){$("header.header").next().addClass("mainArea--products")});<\/script>
+				<!--▲#include virtual="/include/header.html" -->
+				<!-- ▲コンポ―ネント/header -->
+			</div>
+		</header>
+		<div class="mainArea">
+			<div class="fwCms_contentsArea fwCms_leftMenu">
+				<div class="fwCms_box frame_LM" frame_id="LM">
+					<script src="/excludes/ds/js/dsFOSH210.js"><\/script>
+					<script src="/excludes/ds/js/formatAccount.js"><\/script>
+					<!-- ▼コンポ―ネント/ハンバーガーメニュー（サイドメニュー） -->
+					<nav class="sidebar js-offcanvas-left" id="sidebar">
+						<div id="sidebarChild">
+							<section id="userInfo">
+								<h2>ユーザー設定</h2>
+								<span class="js-side-menu-login-info"></span>
+							</section>
+							<div id="sideInc"></div>
+							<!--サイドメニューinc!-->
+							<section class="login-box js-side-menu-login-button">
+								<a class="btn btn_logout pop_other_account cboxElement" title="" href="/member/authentication/relogin">ログアウト</a>
+							</section>
+						</div>
+					</nav>
+					<!-- ▲コンポ―ネント/ハンバーガーメニュー（サイドメニュー） -->
+				</div>
+				<div class="fwCms_box frame_MB ds-container" frame_id="MB">
+					<nav id="breadcrumbs">
+						<ul class="category-bread-link">
+							<li><a href="/">トップページ</a></li>
+							<li><a href="/campaign">キャンペーン</a></li>
+							<li><span>{{CP_NAME}}</span></li>
+						</ul>
+					</nav>
+					<div id="birthday_merumagacp" class="dsContent">
+						<section class="section--box">
+							<h1 class="MV">
+								<img src="/campaign/cp{{CP_ID}}/img/cp{{CP_ID}}_{{BNR_SIZE}}.jpg" alt="{{CP_NAME}}" class="img-fit nosp"><!-- // {{BNR_SIZE}} PC用　980x150(px) バックログの添付ファイルにない場合はSP版を使用 -->
+								<img src="/campaign/cp{{CP_ID}}/img/cp{{CP_ID}}_{{BNR_SIZE}}.jpg" alt="{{CP_NAME}}" class="img-fit nopc"><!-- // {{BNR_SIZE}} SP用　640x200(px) バックログの添付ファイルにない場合はPC用を使用 -->
+							</h1>
+							<div class="mainText">
+								<p><strong>エントリー完了しました。</strong></p>
+								<p>キャンペーンへご参加いただき、<br class="sp">ありがとうございます。<br>引き続きお買い物をお楽しみください。</p>
+								<div class="bnt"><span class="bnt-st"><a class="bnt-target bnt-target-col" href="{{TARGET_URL}}">キャンペーン対象商品へ</a></span></div>
+							</div>
+						</section>
+					</div>
+					<div class="link--boxlist-1">
+						<ul class="link-list link-back icn-home">
+							<li><a href="/"><span>トップページに戻る</span></a></li>
+						</ul>
+					</div>
+					<footer>
+						<div class="footer_inner">
+							<div class="ds-row">
+								<div class="col-6">
+									<ul>
+										<li><a href="/products_search/index.html">商品を探す</a></li>
+										<li><a href="/member/favorite">お気に入り商品</a></li>
+										<li><a href="/member/history">最近チェックした商品</a></li>
+										<li><a href="/genre">取り扱いジャンル一覧</a></li>
+										<li><a href="/partner">取り扱い店舗一覧</a></li>
+									</ul>
+									<ul>
+										<li><a href="/article">おすすめ記事一覧</a></li>
+										<li><a href="/cart">カート</a></li>
+										<li><a href="/member/mypage">マイページ</a></li>
+										<li><a href="https://service.smt.docomo.ne.jp/cgi7/set/changeinfoview?serviceurl=https%3A%2F%2Fshopping.dmkt-sp.jp%2F">ポイント表示設定</a></li>
+										<li><a href="/guide">ご利用ガイド</a></li>
+									</ul>
+								</div>
+								<div class="col-6">
+									<ul>
+										<li><a href="/help">ヘルプ／お問い合わせ</a></li>
+										<li><a href="/information">お知らせ</a></li>
+										<li><a href="/guide/frequently-asked-questions">よくあるご質問</a></li>
+										<li><a href="/welcome">はじめての方へ</a></li>
+									</ul>
+									<ul>
+										<li><a href="/term/terms-of-service">ご利用規約</a></li>
+										<li><a href="https://www.nttdocomo.co.jp/utility/privacy/">プライバシーポリシー</a></li>
+										<li><a href="/term/tokushouhou">特定商取引法に関する表示</a></li>
+									</ul>
+								</div>
+							</div>
+						</div>
+						<address>&copy; NTT DOCOMO</address>
+					</footer>
+				</div>
+			</div>
+		</div>
+		<div class="footer">
+			<div class="fwCms_box frame_FT" frame_id="FT">
+				<div id="sidebar-category" class="js-offcanvas-right">
+		 			<div id="sidebar-categoryInner" class="sidebar-category-inner">
+						<section class="nav-category-section" id="search_genre"><h3>ジャンルから探す</h3></section>
+						<section class="nav-category-section" id="search_shop"><h3>お店から探す</h3></section>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script src="/excludes/ds/js/dsFOSH201.js"><\/script>
+	<script src="/js/sp/access_check.js"><\/script>
+</body>
+</html>
+`;
+const TEMPLATE_ENTRY_CP_HTML = `<!doctype html>
+<html lang="ja">
+<head>
+	<!-- Google Tag Manager -->
+	<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-WSMFSBX');<\/script>
+	<!-- End Google Tag Manager -->
+	<meta charset="UTF-8">
+	<title>{{CP_NAME}}</title>
+	<link rel="stylesheet" href="/excludes/ds/css/frame.css">
+	<link rel="stylesheet" href="/excludes/ds/css/default.css">
+	<link rel="canonical" href="https://dshopping.docomo.ne.jp/campaign/cp{{CP_ID}}/index.html">
+	<link rel="apple-touch-icon-precomposed" href="/icon/icd_docomoliveux_dshopping_192.png">
+
+	<script src="/excludes/ds/js/cmn.js"><\/script>
+	<script src="/excludes/ds/js/nav-sp.js"><\/script>
+	<script src="/excludes/ds/js/_framework.js"><\/script>
+
+	<meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
+	<meta name="google-site-verification" content="ocuekU4QshU3Y2NmsrswldfSlbtLenLFQxQibB_1rqM">
+	<meta name="description" content="{{CP_NAME}}のページです。この機会にdポイントがたまる・つかえる通販サイト「dショッピング」でお得なお買い物をお楽しみください。">
+	<meta name="keywords" content="キャンペーン,ポイント,通販,電話料金合算払い,dショッピング">
+	<meta property="og:type" content="article">
+	<meta property="og:site_name" content="dショッピング">
+	<meta property="og:title" content="{{CP_NAME}}">
+	<meta property="og:description" content="{{CP_NAME}}のページです。この機会にdポイントがたまる・つかえる通販サイト「dショッピング」でお得なお買い物をお楽しみください。">
+	<meta property="og:url" content="https://dshopping.docomo.ne.jp/campaign/cp{{CP_ID}}/index.html">
+	<meta property="og:image" content="https://dshopping.docomo.ne.jp/campaign/cp{{CP_ID}}/img/cp{{CP_ID}}_300x300.jpg">
+	<meta property="fb:app_id" content="269393483208014">
+	<meta name="twitter:site" content="@docomo">
+	<meta name="twitter:card" content="summary">
+	<meta name="twitter:title" content="{{CP_NAME}}">
+	<meta name="twitter:description" content="{{CP_NAME}}のページです。この機会にdポイントがたまる・つかえる通販サイト「dショッピング」でお得なお買い物をお楽しみください。">
+
+	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+	<link rel="stylesheet" href="/excludes/ds/css/partner.css">
+	<link rel="stylesheet" href="/campaign/css/campaign_common.css">
+	<link rel="stylesheet" href="/campaign/css/dsxdf.css">
+
+	<script src="/excludes/ds/js/module.js"><\/script>
+	<script src="/js/sp/access_check.js"><\/script>
+	<script type="text/javascript" src="/excludes/ds/js/_gtm.js"><\/script>
+	<script src="/parts/js/loginInfo.js"><\/script>
+	<script src="/partner/js/view_timer.js"><\/script>
+</head>
+<body id="partnerlist">
+	<!-- Google Tag Manager (noscript) -->
+	<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WSMFSBX" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+	<!-- End Google Tag Manager (noscript) -->
+	<div id="fwCms_wrapper" class="ds-wrap">
+		<header class="header">
+			<div class="fwCms_box frame_HD" frame_id="HD">
+				<!-- ▼コンポ―ネント/header -->
+				<!--▼#include virtual="/include/header.html" -->
+				<header class="mdl-color-text--white header--products" id="header">
+					<button class="btn_menu" id="sidebarBtn" type="button"></button>
+					<span id="site_name"><a href="/"><img src="/excludes/ds/img/logo.svg" alt="dショッピング"></a></span>
+					<div class="header-menu" id="headerMenu"></div>
+				</header>
+				<script>$(function(){$("header.header").next().addClass("mainArea--products")});<\/script>
+				<!--▲#include virtual="/include/header.html" -->
+				<!-- ▲コンポ―ネント/header -->
+			</div>
+		</header>
+		<div class="mainArea">
+			<div class="fwCms_contentsArea fwCms_leftMenu">
+				<div class="fwCms_box frame_LM" frame_id="LM">
+					<script src="/excludes/ds/js/dsFOSH210.js"><\/script>
+					<script src="/excludes/ds/js/formatAccount.js"><\/script>
+					<!-- ▼コンポ―ネント/ハンバーガーメニュー（サイドメニュー） -->
+					<nav class="sidebar js-offcanvas-left" id="sidebar">
+						<div id="sidebarChild">
+							<section id="userInfo">
+								<h2>ユーザー設定</h2>
+								<span class="js-side-menu-login-info"></span>
+							</section>
+							<div id="sideInc"></div>
+							<!--サイドメニューinc!-->
+							<section class="login-box js-side-menu-login-button">
+								<a class="btn btn_logout pop_other_account cboxElement" title="" href="/member/authentication/relogin">ログアウト</a>
+							</section>
+						</div>
+					</nav>
+					<!-- ▲コンポ―ネント/ハンバーガーメニュー（サイドメニュー） -->
+				</div>
+				<div class="fwCms_box frame_MB ds-container" frame_id="MB">
+					<nav id="breadcrumbs">
+						<ul class="category-bread-link">
+							<li><a href="/">トップページ</a></li>
+							<li><a href="/campaign">キャンペーン</a></li>
+							<li><span>{{CP_NAME}}</span></li>
+						</ul>
+					</nav>
+					<div class="dsContent">
+						<section class="section--box">
+							<h1 class="MV">
+								<img src="/campaign/cp{{CP_ID}}/img/{{BNR_FILE_NAME}}" alt="{{CP_NAME}}" class="img-fit nosp"><!-- // {{BNR_SIZE}} PC用　980x150(px) バックログの添付ファイルにない場合はSP版を使用 -->
+								<img src="/campaign/cp{{CP_ID}}/img/{{BNR_FILE_NAME}}" alt="{{CP_NAME}}" class="img-fit nopc"><!-- // {{BNR_SIZE}} SP用　640x200(px) バックログの添付ファイルにない場合はPC用を使用 -->
+							</h1>
+							<div class="mainText">
+								<p class="dsxdf_time view_timer" data-start-date="{{START_CP_DATETIME_TIMER_1}}" data-end-date="{{END_CP_DATETIME_TIMER_1}}" style="display:none;">
+									<span class="fs">エントリー受付期間</span><span class="nosp fs">：</span><br class="sp">{{CP_ENTRY_START}} ～ <br class="sp">{{CP_ENTRY_END}}まで<br>
+									<span class="fs">今週のキャンペーン期間</span><span class="nosp fs">：</span><br class="sp">{{CP_THIS_WEEK_1_START}} ～ <br class="sp">{{CP_THIS_WEEK_1_END}}まで
+								</p>
+
+								<p class="dsxdf_time view_timer" data-start-date="{{START_CP_DATETIME_TIMER_2}}" data-end-date="{{END_CP_DATETIME_TIMER_2}}" style="display:none;">
+									<span class="fs">エントリー受付期間</span><span class="nosp fs">：</span><br class="sp">{{CP_ENTRY_START}} ～ <br class="sp">{{CP_ENTRY_END}}まで<br>
+									<span class="fs">今週のキャンペーン期間</span><span class="nosp fs">：</span><br class="sp">{{CP_THIS_WEEK_2_START}} ～ <br class="sp">{{CP_THIS_WEEK_2_END}}まで
+								</p>
+
+								<p class="dsxdf_time view_timer" data-start-date="{{START_CP_DATETIME_TIMER_3}}" data-end-date="{{END_CP_DATETIME_TIMER_3}}"style="display:none;">
+									<span class="fs">エントリー受付期間</span><span class="nosp fs">：</span><br class="sp">{{CP_ENTRY_START}} ～ <br class="sp">{{CP_ENTRY_END}}まで<br>
+									<span class="fs">今週のキャンペーン期間</span><span class="nosp fs">：</span><br class="sp">{{CP_THIS_WEEK_3_START}} ～ <br class="sp">{{CP_THIS_WEEK_3_END}}まで
+								</p>
+
+								<p class="dsxdf_time view_timer" data-start-date="{{START_CP_DATETIME_TIMER_4}}" data-end-date="{{END_CP_DATETIME_TIMER_4}}"style="display:none;">
+									<span class="fs">エントリー受付期間</span><span class="nosp fs">：</span><br class="sp">{{CP_ENTRY_START}} ～ <br class="sp">{{CP_ENTRY_END}}まで<br>
+									<span class="fs">今週のキャンペーン期間</span><span class="nosp fs">：</span><br class="sp">{{CP_THIS_WEEK_4_START}} ～ <br class="sp">{{CP_THIS_WEEK_4_END}}まで
+								</p>
+
+								<p class="dsxdf_time view_timer" data-start-date="{{START_CP_DATETIME_TIMER_5}}" data-end-date="{{END_CP_DATETIME_TIMER_5}}"style="display:none;">
+									<span class="fs">エントリー受付期間</span><span class="nosp fs">：</span><br class="sp">{{CP_ENTRY_START}} ～ <br class="sp">{{CP_ENTRY_END}}まで<br>
+									<span class="fs">今週のキャンペーン期間</span><span class="nosp fs">：</span><br class="sp">{{CP_THIS_WEEK_5_START}} ～ <br class="sp">{{CP_THIS_WEEK_5_END}}まで
+								</p>
+							</div>
+							<div class="lead t_c mgnb30"><p>{{CP_LEAD}}</p></div>
+
+							<!-- 終了おび★エントリーボタンはコメントアウト -->
+							<div class="closed-block view_timer" data-start-date="{{END_DATETIME_PLUS_1MIN}}" style="display:none"><!-- // 126行目の日付（yyyy/mm/dd hh:mm"）は\`data-end-date="yyyy/mm/dd hh:mm"\`から1分後の日時を入力する -->
+								<p class="camp-close">こちらのキャンペーンは<br class="nopc">終了いたしました</p>
+								<div class="bnt">
+									<span class="bnt-st"><a class="bnt-target bnt-target-col" href="/campaign">開催中のキャンペーン ＞</a></span>
+								</div>
+							</div>
+						</section>
+						<!-- チェック＆エントリー -->
+						<section class="section--box">
+							<div class="entry-block view_timer" data-end-date="{{END_DATETIME_TIMER}}">
+								<div class="checkBox"><input type="checkbox" id="check"><label for="check">メルマガ購読に同意する</label></div>
+								<div class="entryBtn02"><input type="image" src="/campaign/img/btn_01.png" alt="エントリーボタン" id="submit" onclick="location.href='{{CAROL}}'"></div>
+								<script>$(function(){$('#submit').css({opacity:"0.5",cursor:"default"}).prop('disabled',!0);$('#check').on('click',function(){if($(this).prop('checked')==!0){$('#submit').css({opacity:"1",cursor:"pointer"}).prop('disabled',!1)}else{$('#submit').css({opacity:"0.5",cursor:"default"}).prop('disabled',!0)}})});<\/script>
+								<div class="campAttention">
+									<ul class="asterisk-list">
+										<li>キャンペーンの参加にはエントリーが必要です。</li>
+										<li>Wi-Fiで接続している方は、エントリー前に必ずdアカウントでログインを行うか、dアカウントを新規発行ください。<br><a href="/member/authentication">dアカウント発行はこちらから</a></li>
+										<li>本キャンペーンにエントリーいただくと、dショッピング・dショッピングサンプル百貨店のメールサービスを配信させていただきます。予めご了承ください。</li>
+									</ul>
+								</div>
+							</div>
+						</section>
+
+						<section class="section--box">
+							<div class="campDetail">
+								<div class="overview">
+									<dl>
+										<dt class="mgnt0">キャンペーン期間</dt>
+										<dd>{{CP_DATES}}　各日00:00 ～ 23:59まで</dd><!-- 記述方法：mm月dd日・dd日・dd日・dd日・dd日　各日00:00 ～ 23:59まで	// 最大5日、開催しないものはトルツメ	0埋めしない	\`各日00:00 ～ 23:59まで\`は固定 -->
+
+										<dt>キャンペーン対象者</dt>
+										<dd>
+											以下を全て満たすお客さまが対象となります。
+											<ul class="square-list">
+												<li>キャンペーン期間中に本キャンペーンにエントリーされた方</li>
+												<li>{{SHOP_NAME}}で対象商品を<!--n,nnn円以上（送料込・税込）-->購入し、キャンペーン期間中に正常に注文完了された方</li>
+												<li>dショッピングメールサービス、dショッピングサンプル百貨店メールサービスを、ポイント進呈日まで継続して購読された方<br>※進呈日以前に上記メールサービスの受信解除の設定をされると進呈対象外となります。</li>
+											</ul>
+										</dd>
+
+										<dt>キャンペーン対象商品</dt>
+										<dd>{{SHOP_NAME}}の<!-- 全商品 --><!-- キャンペーン対象商品は<a href="{{TARGET_URL}}">こちら</a> --></dd><!-- 対象商品：全商品 → \`全商品\`で生成　対象商品：一部商品 → \`キャンペーン対象商品は<a href="{{TARGET_URL}}">こちら\`で生成 -->
+
+										<dt>キャンペーン特典</dt>
+										<dd>dポイント {{POINT_RATE}}倍<br>
+											<ul class="asterisk-list">
+												<li>ポイント{{POINT_RATE}}倍とは、通常100円（税抜）のご利用につきdポイントが1ポイント進呈されるところ、さらにdポイント（期間・用途限定）を{{POINT_RATE_MINUS_1}}ポイント進呈します。</li>
+											</ul>
+										</dd>
+
+										<dt>ポイント進呈時期</dt>
+										<dd>{{POINT_YM_1}}下旬 ～ {{POINT_YM_2}}上旬予定<br>
+
+											<ul class="asterisk-list">
+												<li>ポイント進呈結果はdショッピングサイト上部のポイント欄からご確認ください。</li>
+											</ul>
+										</dd>
+
+										<dt>ポイント有効期限</dt>
+										<dd>進呈日から約4週間<br>
+											<ul class="asterisk-list">
+												<li>ポイント有効期限はdショッピングサイト上部のポイント欄からご確認ください。</li>
+											</ul>
+										</dd>
+
+										<dt>注意事項</dt>
+										<dd>
+											<ul class="asterisk-list">
+												<li>本キャンペーンで獲得できるポイントは、dポイント（期間・用途限定）です。</li>
+												<li>dポイント（期間・用途限定）は、ドコモコンテンツ、dポイント加盟店で利用できます。一部サービスでご利用いただけない場合がございます。詳しくは、ドコモのホームページ <a href="https://dpoint.docomo.ne.jp/guide/about_dpoint/index.html">dポイントについて</a> をご確認ください。</li>
+												<li>dポイント（期間・用途限定）の進呈対象はdポイントクラブ会員限定です。</li>
+												<li>他のキャンペーンと本キャンペーンは併用可能です。</li>
+												<li>それぞれのキャンペーン条件を満たしている場合、どちらのキャンペーンも適用されます。</li>
+												<li>ポイントの権利の譲渡はできません。</li>
+												<li>不正行為、利用規約違反、その他運営上の趣旨に反していると弊社が判断した場合はポイント進呈対象外といたします。</li>
+												<li>このキャンペーンは予告無く変更・中止させていただく場合がございます。</li>
+												<li>ショッピングのメンテナンスなどの関係でキャンペーンに参加できない場合がございます。</li>
+												<li>ご注文をキャンセルされた場合は、キャンペーンの対象外となります。</li>
+												<li>注文完了後のエントリーも可能です。</li>
+												<li>ポイント進呈対象は電話料金合算払い、クレジットカード（dカード含む）でのご注文金額分に関して、適応されます。ポイント・クーポンご利用分は対象外です。</li>
+												<li>特典ポイントは、ご注文金額の通常進呈させていただきます1倍分を除いた、残りの倍率をdポイント（期間・用途限定）にて進呈いたします。</li>
+												<li>全額ポイントもしくはクーポン利用でご注文いただいた場合は、キャンペーンの対象外となります。</li>
+												<li>送料はポイント計算対象のご注文金額に含みます。</li>
+												<li>消費税はポイント計算対象のご注文金額に含みません。</li>
+												<li>クーポンをご利用いただいたお買い物の場合、商品代金合計金額からご利用クーポン分を差し引いた税抜金額が、ポイント進呈および倍付の対象となります。クーポンご利用分はポイント進呈・倍付の対象となりません。</li>
+												<li>本キャンペーン対象商品は、dショッピングサンプル百貨店に掲載されている商品のみとなります。ｄショッピング内で扱っている類似商品（サイズ違い・色違い等）はキャンペーン対象外となりますのでご注意願います。</li>
+												<li>在庫数に限りがございますので、商品によってはキャンペーン期間中に在庫が無くなる場合がございます。</li>
+												<li>本キャンペーンは期間中、何回でもご参加いただけます。</li>
+												{{POINT_LIMIT_LI}}<!-- 付与上限：無し → li削除 / 数字あり → li出力　テキスト → 本キャンペーンの進呈ポイント上限はn,nnnポイントとなります。 -->
+											</ul>
+										</dd>
+									</dl>
+								</div>
+							</div>
+						</section>
+					</div>
+					<section class="about-ds bgc-gu">
+						<script type="text/javascript">$(document).ready(function(){$('.bgc-gu').load('/inc/cpbtm.html');});<\/script>
+					</section>
+					<div class="link--boxlist-1">
+						<ul class="link-list link-back icn-home">
+							<li><a href="/"><span>トップページに戻る</span></a></li>
+						</ul>
+					</div>
+					<footer>
+						<div class="footer_inner">
+							<div class="ds-row">
+								<div class="col-6">
+									<ul>
+										<li><a href="/products_search/index.html">商品を探す</a></li>
+										<li><a href="/member/favorite">お気に入り商品</a></li>
+										<li><a href="/member/history">最近チェックした商品</a></li>
+										<li><a href="/genre">取り扱いジャンル一覧</a></li>
+										<li><a href="/partner">取り扱い店舗一覧</a></li>
+									</ul>
+									<ul>
+										<li><a href="/article">おすすめ記事一覧</a></li>
+										<li><a href="/cart">カート</a></li>
+										<li><a href="/member/mypage">マイページ</a></li>
+										<li><a href="https://service.smt.docomo.ne.jp/cgi7/set/changeinfoview?serviceurl=https%3A%2F%2Fshopping.dmkt-sp.jp%2F">ポイント表示設定</a></li>
+										<li><a href="/guide">ご利用ガイド</a></li>
+									</ul>
+								</div>
+								<div class="col-6">
+									<ul>
+										<li><a href="/help">ヘルプ／お問い合わせ</a></li>
+										<li><a href="/information">お知らせ</a></li>
+										<li><a href="/guide/frequently-asked-questions">よくあるご質問</a></li>
+										<li><a href="/welcome">はじめての方へ</a></li>
+									</ul>
+									<ul>
+										<li><a href="/term/terms-of-service">ご利用規約</a></li>
+										<li><a href="https://www.nttdocomo.co.jp/utility/privacy/">プライバシーポリシー</a></li>
+										<li><a href="/term/tokushouhou">特定商取引法に関する表示</a></li>
+									</ul>
+								</div>
+							</div>
+						</div>
+						<address>&copy; NTT DOCOMO</address>
+					</footer>
+				</div>
+			</div>
+		</div>
+		<div class="footer">
+			<div class="fwCms_box frame_FT" frame_id="FT">
+				<div id="sidebar-category" class="js-offcanvas-right">
+		 			<div id="sidebar-categoryInner" class="sidebar-category-inner">
+						<section class="nav-category-section" id="search_genre"><h3>ジャンルから探す</h3></section>
+						<section class="nav-category-section" id="search_shop"><h3>お店から探す</h3></section>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script src="/excludes/ds/js/dsFOSH201.js"><\/script>
+	<script src="/js/sp/access_check.js"><\/script>
+</body>
+</html>
+`;
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MODE DETECTION
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let currentMode = 'cp'; // 'cp' | 'page'
+let pageData = null;    // extracted page-mode data
+
+function detectMode(draft) {
+  const trimmed = draft.trimStart();
+  if (trimmed.startsWith('【特集ページ設定】')) return 'special_cp';
+  if (trimmed.startsWith('【CPページ設定】')) {
+    if (/エントリー有/.test(draft)) return 'entry_cp';
+    return 'cp';
+  }
+  if (!trimmed.startsWith('【ページ設定】')) return 'cp';
+  if (/クーポン[^\S\n\r　]*対応詳細|クーポン期間|クーポンID|クーポン一覧掲載/.test(draft)) return 'coupon';
+  return 'page';
+}
+
+function applyMode(mode) {
+  currentMode = mode;
+  const badge = document.getElementById('mode-badge');
+  const cpUI  = document.getElementById('cp-mode-ui');
+  const pgUI  = document.getElementById('page-mode-ui');
+  const tabs  = document.querySelectorAll('.tab');
+  const dlBtn = document.getElementById('dl-btn');
+
+  badge.style.display = '';
+  if (mode === 'coupon') {
+    badge.textContent = 'クーポンモード';
+    badge.className = 'mode-badge page'; badge.style.background='var(--purple)'; badge.style.color='#fff';
+    cpUI.style.display = 'none';
+    pgUI.style.display = '';
+    // クーポン: タブ①のみ有効
+    tabs.forEach(t => {
+      if (t.dataset.tab === 'list') t.classList.remove('disabled');
+      else t.classList.add('disabled');
+    });
+    document.querySelector('.tab[data-tab="list"]').click();
+    document.getElementById('tab-finished').style.display = 'none';
+    dlBtn.style.display = 'none';
+  } else if (mode === 'page') {
+    badge.textContent = '【ページ設定】モード';
+    badge.className = 'mode-badge page'; badge.style.background=''; badge.style.color='';
+    cpUI.style.display = 'none';
+    pgUI.style.display = '';
+    // list/cp-open/finished を無効、banner のみ有効
+    tabs.forEach(t => {
+      if (t.dataset.tab === 'banner') { t.classList.remove('disabled'); t.click(); }
+      else t.classList.add('disabled');
+    });
+    document.getElementById('tab-finished').style.display = 'none';
+    // cp-openタブのコンテンツをクリア
+    document.getElementById('code-cp-open').textContent = '';
+    document.getElementById('code-list').textContent = '';
+    dlBtn.style.display = '';
+    dlBtn.textContent = 'ZIP DL';
+  } else if (mode === 'special_cp') {
+    badge.textContent = '特集CPモード';
+    badge.className = 'mode-badge cp'; badge.style.background='var(--orange)'; badge.style.color='#fff';
+    cpUI.style.display = '';
+    pgUI.style.display = 'none';
+    tabs.forEach(t => { if (t.id !== 'tab-finished') t.classList.remove('disabled'); });
+    document.getElementById('tab-finished').style.display = 'none';
+    dlBtn.style.display = '';
+    dlBtn.textContent = 'ZIP DL';
+  } else if (mode === 'entry_cp') {
+    badge.textContent = '火曜CPモード';
+    badge.className = 'mode-badge cp'; badge.style.background='var(--cyan)'; badge.style.color='#000';
+    cpUI.style.display = '';
+    pgUI.style.display = 'none';
+    tabs.forEach(t => { if (t.id !== 'tab-finished') t.classList.remove('disabled'); });
+    document.getElementById('tab-finished').style.display = 'none'; // 生成まで非表示
+    dlBtn.style.display = '';
+    dlBtn.textContent = 'ZIP DL';
+  } else {
+    badge.textContent = '【CPページ設定】モード';
+    badge.className = 'mode-badge cp'; badge.style.background=''; badge.style.color='';
+    cpUI.style.display = '';
+    pgUI.style.display = 'none';
+    tabs.forEach(t => { if (t.id !== 'tab-finished') t.classList.remove('disabled'); });
+    document.getElementById('tab-finished').style.display = 'none'; // 生成まで非表示
+    dlBtn.style.display = '';
+    dlBtn.textContent = 'ZIP DL';
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CP MODE FIELDS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const FIELDS = [
+  { key:'CP_ID',               label:'CP_ID',        hint:'キャンペーンURL末尾のディレクトリ名 例: cp202603625 / sundrugec446_ptncp_2603' },
+  { key:'CP_NAME',             label:'CP_NAME',       hint:'キャンペーン名（完全形）' },
+  { key:'CP_LEAD',             label:'CP_LEAD',       hint:'リード文（1〜2文）' },
+  { key:'CP_START',            label:'CP_START',      hint:'例: 2026年2月21日(土)00:00' },
+  { key:'CP_END',              label:'CP_END',        hint:'例: 2026年3月9日(月)23:59　※「まで」不要' },
+  { key:'CP_URL',              label:'CP_URL',        hint:'キャンペーンページURL（本番）' },
+  { key:'START_DATETIME_TIMER',label:'START_TIMER',   hint:'開始日時 yyyy/mm/dd hh:mm' },
+  { key:'ENTRY_START_TIMER',   label:'ENTRY_START_TIMER', hint:'事前エントリー開始 yyyy/mm/dd hh:mm（CP一覧の表示開始に使用、なければSTART_TIMERと同じ）' },
+  { key:'END_DATETIME_TIMER',  label:'END_TIMER',     hint:'終了日時 yyyy/mm/dd hh:mm' },
+  { key:'END_DATETIME_PLUS_1MIN',label:'END+1分',     hint:'終了+1分 yyyy/mm/dd hh:mm' },
+  { key:'TARGET_URL',          label:'TARGET_URL',    hint:'対象商品URL' },
+  { key:'TARGET_PRODUCTS',     label:'対象商品',       hint:'全商品 or 一部商品', type:'select', options:['全商品','一部商品'] },
+  { key:'SHOP_NAME',           label:'SHOP_NAME',     hint:'ショップ名' },
+  { key:'BNR_ID',              label:'BNR_ID',        hint:'バナーID（数字のみ）例: 193' },
+  { key:'MIN_PRICE',            label:'MIN_PRICE',     hint:'購入下限金額（カンマ区切り可）例: 4,400　なければ空' },
+  { key:'POINT_RATE',          label:'POINT_RATE',    hint:'ポイント倍率（数字のみ）例: 3' },
+  { key:'POINT_RATE_MINUS_1',  label:'RATE-1',        hint:'倍率-1（数字のみ）例: 2' },
+  { key:'POINT_YM_1',          label:'POINT_YM_1',    hint:'進呈年月1 例: 2026年4月' },
+  { key:'POINT_YM_2',          label:'POINT_YM_2',    hint:'進呈年月2 例: 2026年5月（0埋めなし）' },
+  { key:'POINT_LIMIT',         label:'POINT_LIMIT',   hint:'上限なし=空白 / あり=数字のみ 例: 5000' },
+  { key:'ENTRY',               label:'エントリー',     hint:'無 or 有', type:'select', options:['無','有'] },
+  { key:'CAROL',               label:'CAROL',          hint:'エントリーURL（ent.campaign.docomo.ne.jp/...）' },
+  { key:'BNR_PC_SIZE',          label:'BNR_PC_SIZE',    hint:'PC用バナーサイズ 例: 980x150（なければSP用を使用）' },
+  { key:'BNR_SP_SIZE',          label:'BNR_SP_SIZE',    hint:'SP用バナーサイズ 例: 640x200（なければPC用を使用）' },
+  { key:'HAS_300',              label:'300x300',         hint:'添付に300x300あり=有、なし=無', type:'select', options:['有','無'] },
+  { key:'HAS_BNR_SECTION',      label:'商品詳細バナー',  hint:'商品詳細バナーセクションあり=有、なし=無', type:'select', options:['有','無'] },
+  { key:'CP_TOKUTEN',           label:'CP_TOKUTEN',     hint:'特集CP用キャンペーン特典HTML（<dt><dd>内容）' },
+  { key:'CP_BANNER_URL',        label:'CP_BANNER_URL',  hint:'商品詳細バナーのリンク先URL（空の場合はCP_URLを使用）' },
+  { key:'BNR_PC_FILE',          label:'BNR_PC_FILE',    hint:'entry_cp用 PC画像ファイル名 例: kayoup5_980x150.jpg' },
+  { key:'BNR_SP_FILE',          label:'BNR_SP_FILE',    hint:'entry_cp用 SP画像ファイル名 例: kayoup5_640x200.jpg' },
+  { key:'BNR_300_FILE',         label:'BNR_300_FILE',   hint:'entry_cp用 300x300ファイル名 例: kayoup5_300x300.jpg' },
+  { key:'CP_DATES',             label:'CP_DATES',        hint:'例: 2月3日・17日・24日' },
+  { key:'CP_ENTRY_START',       label:'CP_ENTRY_START',  hint:'事前エントリー開始（日本語）例: 2月2日(月)00:00' },
+  { key:'CP_ENTRY_END',         label:'CP_ENTRY_END',    hint:'エントリー終了（日本語）例: 2月24日(火)23:59' },
+  { key:'END_CP_DATETIME_TIMER_1', label:'END_TIMER_1',  hint:'1日目終了 yyyy/mm/dd 23:59' },
+  { key:'END_CP_DATETIME_TIMER_2', label:'END_TIMER_2',  hint:'2日目終了 yyyy/mm/dd 23:59（なければ空）' },
+  { key:'END_CP_DATETIME_TIMER_3', label:'END_TIMER_3',  hint:'3日目終了（なければ空）' },
+  { key:'END_CP_DATETIME_TIMER_4', label:'END_TIMER_4',  hint:'4日目終了（なければ空）' },
+  { key:'END_CP_DATETIME_TIMER_5', label:'END_TIMER_5',  hint:'5日目終了（なければ空）' },
+  { key:'START_CP_DATETIME_TIMER_2', label:'START_TIMER_2', hint:'2日目開始 yyyy/mm/dd 00:00' },
+  { key:'START_CP_DATETIME_TIMER_3', label:'START_TIMER_3', hint:'3日目開始 yyyy/mm/dd 00:00' },
+  { key:'START_CP_DATETIME_TIMER_4', label:'START_TIMER_4', hint:'4日目開始（なければ空）' },
+  { key:'START_CP_DATETIME_TIMER_5', label:'START_TIMER_5', hint:'5日目開始（なければ空）' },
+  { key:'CP_THIS_WEEK_1_START', label:'THIS_WEEK_1_S',   hint:'1日目開始（日本語）例: 2月3日(火)00:00' },
+  { key:'CP_THIS_WEEK_1_END',   label:'THIS_WEEK_1_E',   hint:'1日目終了（日本語）例: 2月3日(火)23:59' },
+  { key:'CP_THIS_WEEK_2_START', label:'THIS_WEEK_2_S',   hint:'2日目開始（日本語）' },
+  { key:'CP_THIS_WEEK_2_END',   label:'THIS_WEEK_2_E',   hint:'2日目終了（日本語）' },
+  { key:'CP_THIS_WEEK_3_START', label:'THIS_WEEK_3_S',   hint:'3日目開始（日本語）' },
+  { key:'CP_THIS_WEEK_3_END',   label:'THIS_WEEK_3_E',   hint:'3日目終了（日本語）' },
+  { key:'CP_THIS_WEEK_4_START', label:'THIS_WEEK_4_S',   hint:'4日目開始（日本語）（なければ空）' },
+  { key:'CP_THIS_WEEK_4_END',   label:'THIS_WEEK_4_E',   hint:'4日目終了（日本語）（なければ空）' },
+  { key:'CP_THIS_WEEK_5_START', label:'THIS_WEEK_5_S',   hint:'5日目開始（日本語）（なければ空）' },
+  { key:'CP_THIS_WEEK_5_END',   label:'THIS_WEEK_5_E',   hint:'5日目終了（日本語）（なければ空）' },
+];
+
+const vals = {};
+FIELDS.forEach(f => vals[f.key] = f.key === 'TARGET_PRODUCTS' ? '全商品' : '');
+
+function buildFields() {
+  const el = document.getElementById('fields');
+  el.innerHTML = '';
+  FIELDS.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'field';
+    if (f.type === 'select') {
+      const opts = f.options.map(o =>
+        `<option value="${o}" ${vals[f.key]===o?'selected':''}>${o}</option>`
+      ).join('');
+      row.innerHTML = `<span class="fkey" title="${f.hint}">${f.label}</span>
+        <select id="f-${f.key}" onchange="vals['${f.key}']=this.value">${opts}</select>`;
+    } else if (f.key === 'CP_TOKUTEN') {
+      const v = (vals[f.key]||'').replace(/"/g,'&quot;');
+      row.innerHTML = `<span class="fkey" title="${f.hint}">${f.label}</span>
+        <textarea id="f-${f.key}" rows="6" placeholder="${f.hint}"
+          oninput="vals['${f.key}']=this.value">${v}</textarea>`;
+    } else if (f.key === 'CP_LEAD') {
+      const v = (vals[f.key]||'').replace(/"/g,'&quot;');
+      row.innerHTML = `<span class="fkey" title="${f.hint}">${f.label}</span>
+        <textarea id="f-${f.key}" rows="3" placeholder="${f.hint}"
+          oninput="vals['${f.key}']=this.value">${v}</textarea>`;
+    } else {
+      const v = (vals[f.key]||'').replace(/"/g,'&quot;');
+      row.innerHTML = `<span class="fkey" title="${f.hint}">${f.label}</span>
+        <input type="text" id="f-${f.key}" value="${v}" placeholder="${f.hint}"
+          oninput="vals['${f.key}']=this.value">`;
+    }
+    el.appendChild(row);
+  });
+}
+buildFields();
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// COUPON MODE — REVIEW UI
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function buildCouponUI(data) {
+  const meta = document.getElementById('page-meta');
+  meta.innerHTML = `
+    <div class="field">
+      <span class="fkey" title="クーポン名">クーポン名</span>
+      <input type="text" id="cp-coupon-name" value="${(data.coupon_name||'').replace(/"/g,'&quot;')}" oninput="pageData.coupon_name=this.value">
+    </div>
+    <div class="field">
+      <span class="fkey">BNR_ID</span>
+      <input type="text" id="cp-bnr-id" value="${data.bnr_id||''}" placeholder="例: 084" oninput="pageData.bnr_id=this.value">
+    </div>
+    <div class="field">
+      <span class="fkey">START</span>
+      <input type="text" id="cp-start" value="${data.start_timer||''}" placeholder="yyyy/mm/dd hh:mm" oninput="pageData.start_timer=this.value">
+    </div>
+    <div class="field">
+      <span class="fkey">END</span>
+      <input type="text" id="cp-end-timer" value="${data.end_timer||''}" placeholder="yyyy/mm/dd hh:mm" oninput="pageData.end_timer=this.value">
+    </div>
+    <div class="field">
+      <span class="fkey">終了日表示</span>
+      <input type="text" id="cp-cp-end" value="${(data.cp_end||'').replace(/"/g,'&quot;')}" placeholder="2026年3月22日(日)23:59" oninput="pageData.cp_end=this.value">
+    </div>
+    <div class="field">
+      <span class="fkey">URL</span>
+      <input type="text" id="cp-url" value="${(data.url||'').replace(/"/g,'&quot;')}" oninput="pageData.url=this.value">
+    </div>
+    <div class="field">
+      <span class="fkey">画像</span>
+      <input type="text" id="cp-img" value="${(data.img_file||'').replace(/"/g,'&quot;')}" oninput="pageData.img_file=this.value">
+    </div>
+  `;
+  document.getElementById('page-banners').innerHTML = '';
+}
+
+function buildCouponListSnippet() {
+  if (!pageData || !pageData.coupon) throw new Error('クーポンデータがありません。先にAI自動抽出を実行してください。');
+  const name    = (document.getElementById('cp-coupon-name')?.value || pageData.coupon_name || '').trim();
+  const bnrId   = (document.getElementById('cp-bnr-id')?.value     || pageData.bnr_id      || '').trim();
+  const start   = (document.getElementById('cp-start')?.value      || pageData.start_timer  || '').trim();
+  const end     = (document.getElementById('cp-end-timer')?.value   || pageData.end_timer    || '').trim();
+  const cpEnd   = (document.getElementById('cp-cp-end')?.value      || pageData.cp_end       || '').trim();
+  const url     = (document.getElementById('cp-url')?.value         || pageData.url           || '').trim();
+  const imgFile = (document.getElementById('cp-img')?.value         || pageData.img_file      || '').trim();
+  return `<li class="view_timer" data-start-date="${start}" data-end-date="${end}" style="display:none">
+\t<a href="${url}">
+\t\t<img src="/parts/products/img/${bnrId}/${imgFile}" alt="" class="img-fit">
+\t\t<p class="campTime">${cpEnd}まで</p>
+\t\t<p class="campTitle">${name}</p>
+\t</a>
+</li>`;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PAGE MODE — バナー画像補正
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ページ設定のバナーはPC横長（980x150, 900x150等）を使うべきだが、
+// AIが640x200や300x300を選んでしまう場合がある。
+// ドラフト内の添付ファイル一覧からPC横長ファイルを特定し、自動補正する。
+function _fixPageBannerImages(data) {
+  if (!data.banners || !data.banners.length) return;
+  const draft = document.getElementById('draft')?.value || '';
+  // 添付ファイル一覧を取得（「添付ファイルを追加」以降の .jpg/.png/.gif）
+  const attachSection = draft.split(/添付ファイルを追加/)[1] || '';
+  const allFiles = (attachSection.match(/[\w\-.]+\.(jpg|jpeg|png|gif)/gi) || []);
+  if (!allFiles.length) return;
+  // PC横長バナーファイルを特定（980x150, 900x150 等の横長サイズ）
+  const pcFile = allFiles.find(f => /9[0-8]0x150/.test(f));
+  if (!pcFile) return;
+  // 各バナーの画像を補正: AIが選んだファイルが同一プレフィックスの別サイズなら差し替え
+  data.banners.forEach(bnr => {
+    if (bnr.type === 'end_change' || !bnr.img) return;
+    // プレフィックスが同じで640x200や300x300を選んでしまった場合に補正
+    const bnrPrefix = bnr.img.replace(/_?\d+x\d+/, '');
+    const pcPrefix  = pcFile.replace(/_?\d+x\d+/, '');
+    if (bnrPrefix === pcPrefix && bnr.img !== pcFile) {
+      bnr.img = pcFile;
+      bnr.confidence = 'high'; // 補正済みなので確信度をhighに
+    }
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PAGE MODE — REVIEW UI
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function buildPageUI(data) {
+  pageData = data;
+
+  // 「即時」公開チェック: タイトル行に「即時」「即日」が含まれ、かつ日付も時刻も明記されていない場合のみstart_timerを空にする
+  const draft = document.getElementById('draft')?.value || '';
+  const titleLine = (draft.match(/【ページ設定】[^\n]*/)||[''])[0];
+  if (/即時|即日/.test(titleLine)) {
+    // 「yyyy/mm/dd 即時」パターンは日付があるので空にしない（コード側で00:00補完）
+    // 日付が全くない場合のみ空にする
+    if (!/\d{4}\/\d{1,2}\/\d{1,2}/.test(titleLine)) {
+      data.start_timer = '';
+    }
+  }
+
+  // ページ設定バナーの画像補正: 同一プレフィックスの場合PC横長を優先
+  _fixPageBannerImages(data);
+
+  // meta fields (bnr_id, start_timer, end_timer)
+  const meta = document.getElementById('page-meta');
+  meta.innerHTML = `
+    <div class="field">
+      <span class="fkey">BNR_ID</span>
+      <input type="text" id="pg-bnr-id" value="${data.bnr_id||''}" placeholder="例: 186" oninput="pageData.bnr_id=this.value">
+    </div>
+    <div class="field">
+      <span class="fkey">START</span>
+      <input type="text" id="pg-start" value="${data.start_timer||''}" placeholder="yyyy/mm/dd hh:mm" oninput="pageData.start_timer=this.value">
+    </div>
+    <div class="field">
+      <span class="fkey">END</span>
+      <input type="text" id="pg-end" value="${data.end_timer||''}" placeholder="yyyy/mm/dd hh:mm" oninput="pageData.end_timer=this.value">
+    </div>
+  `;
+
+  // banner rows
+  const container = document.getElementById('page-banners');
+  container.innerHTML = '';
+  (data.banners || []).forEach((bnr, i) => {
+    const isWarn = bnr.confidence === 'low';
+    const row = document.createElement('div');
+    row.className = `bnr-row${isWarn?' warn':''}`;
+    const isEndChange = bnr.type === 'end_change';
+    const isImgChange = bnr.type === 'img_change';
+    row.innerHTML = `
+      <div class="bnr-row-head">
+        <span class="bnr-idx">${bnr.index || (i+1)+'番目'}</span>
+        ${isEndChange
+          ? `<span class="badge-warn" style="background:rgba(178,148,187,.15);color:var(--purple);border-color:rgba(178,148,187,.3)">終了日変更</span>`
+          : isImgChange
+            ? `<span class="badge-warn" style="background:rgba(138,190,183,.15);color:var(--cyan);border-color:rgba(138,190,183,.3)">画像変更</span>`
+            : isWarn
+              ? `<span class="badge-warn">⚠ 要確認</span>`
+              : `<span class="badge-ok">✓ 自動マッチ</span>`
+        }
+      </div>
+      <div class="bnr-field">
+        <span class="bnr-fkey">alt</span>
+        <input type="text" value="${(bnr.alt||'').replace(/"/g,'&quot;')}"
+          oninput="pageData.banners[${i}].alt=this.value">
+      </div>
+      ${(isEndChange) ? '' : `
+      ${isImgChange ? '' : `
+      <div class="bnr-field">
+        <span class="bnr-fkey">URL</span>
+        <input type="text" value="${(bnr.url||'').replace(/"/g,'&quot;')}"
+          oninput="pageData.banners[${i}].url=this.value">
+      </div>`}
+      <div class="bnr-field">
+        <span class="bnr-fkey">画像</span>
+        <input type="text" value="${(bnr.img||'').replace(/"/g,'&quot;')}"
+          oninput="pageData.banners[${i}].img=this.value"
+          style="${isWarn?'border-color:var(--orange)':''}">
+      </div>
+      <div class="bnr-field">
+        <span class="bnr-fkey">start_date</span>
+        <input type="text" value="${(bnr.start_date||'').replace(/"/g,'&quot;')}"
+          placeholder="空=即時公開（グローバル日時を使用）"
+          oninput="pageData.banners[${i}].start_date=this.value">
+      </div>`}
+      <div class="bnr-field">
+        <span class="bnr-fkey">end_date</span>
+        <input type="text" value="${(bnr.end_date||'').replace(/"/g,'&quot;')}"
+          placeholder="yyyy/mm/dd hh:mm（なければ空白）"
+          oninput="pageData.banners[${i}].end_date=this.value">
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EXTRACT DISPATCH
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+let _extractTimer = null;
+function _startExtractTimer(btn) {
+  const t0 = Date.now();
+  _extractTimer = setInterval(() => {
+    const sec = Math.floor((Date.now() - t0) / 1000);
+    btn.textContent = `⋯ 抽出中（${sec}秒）`;
+  }, 1000);
+}
+function _stopExtractTimer() {
+  if (_extractTimer) { clearInterval(_extractTimer); _extractTimer = null; }
+}
+
+
+async function extractFields() {
+  const draft = document.getElementById('draft').value.trim();
+  if (!draft){showErr('原稿を入力してください。');return;}
+  const headers = {'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'};
+  const btn = document.getElementById('ext-btn');
+  btn.textContent='⋯ 抽出中（0秒）'; btn.disabled=true; hideErr();
+  _startExtractTimer(btn);
+  const mode = detectMode(draft);
+  applyMode(mode);
+  if (mode==='coupon')     await _doExtractCoupon(draft, headers, btn);
+  else if (mode==='page') await _doExtractPage(draft, headers, btn);
+  else                    await _doExtractCP(draft, headers, btn);
+}
+
+
+async function _doExtractCP(draft, headers, btn) {
+  const prompt = `以下のバックログ原稿からキャンペーン情報を抽出し、JSONのみで返してください。
+コードブロック・説明文は不要。JSONオブジェクトだけを返してください。
+
+キー一覧:
+- CP_ID: 「新規作成ページ」→「キャンペーン」のURL末尾ディレクトリ名をそのまま取得。例: https://...campaign/cp202603645/ → "cp202603645"、https://...campaign/sundrugec446_ptncp_2603/ → "sundrugec446_ptncp_2603"。数字・英字・アンダースコア含む完全な文字列（cp等のプレフィックスも含む）
+- CP_NAME: キャンペーン名（完全形）。「CP名」フィールドから取得。【】も含めてそのまま抽出すること
+- CP_LEAD: リード文
+- CP_START: 「キャンペーンページ　対応詳細」セクション内「開始日時」の値（日本語形式・曜日と時刻の間スペースなし 例: 2026年2月21日(土)00:00）。CP名・CPページあおり文・タイトル行の日付は使用しないこと
+- CP_END: 「キャンペーンページ　対応詳細」セクション内「終了日時」の値（日本語形式・「まで」を含まない・曜日と時刻の間スペースなし 例: 2026年3月9日(月)23:59）。CP名・CPページあおり文・タイトル行の日付は使用しないこと
+- CP_URL: キャンペーンページURL（「# 新規作成ページ」→「## キャンペーン」のURL）
+- START_DATETIME_TIMER: 「キャンペーンページ　対応詳細」セクション内「開始日時」の値（yyyy/mm/dd hh:mm形式 例: 2026/02/21 00:00）
+- ENTRY_START_TIMER: タイトル行の「事前エントリ」日時をyyyy/mm/dd hh:mm形式で（例: 2026/05/04 00:00）。「事前エントリ」の記載がない場合はSTART_DATETIME_TIMERと同じ値を返す
+- END_DATETIME_TIMER: 「キャンペーンページ　対応詳細」セクション内「終了日時」の値（yyyy/mm/dd hh:mm形式 例: 2026/03/09 23:59）
+- END_DATETIME_PLUS_1MIN: 終了日時の1分後（yyyy/mm/dd hh:mm形式 例: 2026/03/10 00:00）
+- TARGET_URL: 対象商品URL。以下の優先順で取得。①「対象商品,エントリー後遷移先」の直後のURL（例: https://dshopping.docomo.ne.jp/partner/seedcoms/?pcode=040）。②①がなければ「対象ページ」→「商品詳細」のURL。「対象ページ」の商品詳細URLは②の最終手段であり、①が存在する場合は絶対に使用しないこと
+- TARGET_PRODUCTS: 「全商品」または「一部商品」
+- SHOP_NAME: ショップ名。タイトル行「【CPページ設定】」の直後から取得。CP_IDを含む文字列（例: cp202603661_daily-3様）の場合はアンダースコア以降「様」の直前まで（例: "daily-3"）。CP_IDを含まない場合は「様」の直前まで（例: "不二家ファミリータウン"）
+- MIN_PRICE: 「購入下限金額」の値をカンマ区切り形式で（例: "4,400"）。0または記載なし・なしの場合は空文字
+- BNR_ID: 以下の優先順で取得。①「# 【確認用】タイマー設定」内のURL「/parts/products/NNN.html」のNNN（数字のみ）。②①がなければ「対象ページ」→「商品詳細」のURL（例: /products/4464902888728808）の数字列の先頭3桁（例: 4464902888728808 → "446"）。どちらもなければ空文字
+- POINT_RATE: ポイント倍率（数字のみ 例: 3）
+- POINT_RATE_MINUS_1: 倍率-1（数字のみ 例: 2）
+- POINT_YM_1: ポイント進呈年月1（yyyy年m月形式・月は0埋めなし 例: 2026年4月）。「ポイント進呈時期」行に具体的な月が記載されている場合のみ抽出。「下旬 ～ 上旬予定」のみで月の記載がない場合は空文字（システムがEND_DATETIME_TIMERから翌月を自動計算）
+- POINT_YM_2: ポイント進呈年月2（yyyy年m月形式・月は0埋めなし 例: 2026年5月）。月の記載がない場合は空文字（システムが翌々月を自動計算）
+- POINT_LIMIT: 付与上限（上限なし=空文字、あり=数字のみ 例: 5000）
+- ENTRY: 「エントリー有」という記述があれば「有」、なければ「無」
+- CAROL: 「CAROL」または「エントリー用URL」という見出しの直後にあるURL（例: https://ent.campaign.docomo.ne.jp/...）。エントリーなしの場合は空文字
+- BNR_PC_SIZE: 添付ファイル一覧に「980x150」が含まれていれば"980x150"、なければ（640x200があれば）"640x200"
+- BNR_SP_SIZE: 添付ファイル一覧に「640x200」が含まれていれば"640x200"、なければ（980x150があれば）"980x150"
+- HAS_300: 添付ファイル一覧に「300x300」が含まれていれば"有"、なければ"無"
+- HAS_BNR_SECTION: 原稿に「【mm/dd更新】対応詳細」かつ「商品詳細　対応詳細」というバナー対応セクションがあれば"有"、なければ"無"。「キャンペーンページ　対応詳細」のみの場合は"無"。
+- CP_BANNER_URL: 「商品詳細　対応詳細」セクション内に「リンク先URL」が明記されていればそのURL。必ず今回の原稿内のURLのみを使用し、他の原稿・履歴・記憶から推測しないこと。なければ空文字（buildCpBannerSnippetでCP_URLの代わりに使用）
+- BNR_PC_FILE: 添付ファイル一覧（「ダウンロード」という文字列の直前にあるファイル名）からファイル名をそのまま取得する。【絶対禁止】300x300はCP一覧サムネイル専用のため、PC用・SP用タイトル画像として絶対に選んではならない。PC用＝以下の優先順で選択: ①ファイル名中に「980」と「150」の両方を含むもの（例: kayoup5_980x150.jpg）。②①がなければ、横長サイズ（幅x高さで幅>高さ、かつ300x300や640x200ではないもの。例: cp202604948_900x150.jpg）。③①②がなければ「640」と「200」を含むファイル名。ファイル名は一切変更・省略せずそのまま出力すること
+- BNR_SP_FILE: 添付ファイル一覧からファイル名をそのまま取得。【絶対禁止】300x300はCP一覧サムネイル専用のため、SP用タイトル画像として絶対に選んではならない。SP用＝①ファイル名中に「640」と「200」の両方を含むもの（例: cp202604614_640x200_260401.jpg）。①がなければ②「980」と「150」を含むファイル名。①②どちらもなければ空文字（300x300は絶対に選ばない）。ファイル名は一切変更・省略せずそのまま出力すること
+- BNR_300_FILE: 添付ファイル一覧からファイル名をそのまま取得。サムネイル用＝ファイル名中に「300」を含むもの（例: kayoup5_300x300.jpg, cp202604614_300x300_260401.jpg）。なければ空文字。ファイル名は一切変更・省略せずそのまま出力すること
+- CP_TOKUTEN: 原稿に「<キャンペーン特典文言>」セクションがある場合、その内容をHTML形式で整形した文字列。以下のルールで変換する：
+  先頭に「キャンペーン特典」というタイトル行がある場合はスキップ（dtタグと重複するため）
+  次の行がポイント倍率等のタイトル（例:「ポイント最大20倍」）→ そのままテキスト、<br>付き
+  説明文 → 改行を<br>に変換してそのまま
+  「・XX倍商品〜」の箇所は <ul style="text-indent: -1em; margin-left: 1em;"> の li リスト形式に変換。・（中黒）はそのままliの中に残すこと（削除しない）。例: <li>・20倍商品　100円...</li>
+  全体をddタグの中身として完結させる。セクションがなければ空文字
+- CP_DATES: 「※CP実施日」直後の行（例:「火曜（2/3・17・24）」）から実施日を「m月d日・d日・d日」形式で生成。月は先頭日付から取得、以降の日は日のみ。0埋めなし（例: 2月3日・17日・24日）
+- CP_ENTRY_START: タイトル行の「事前エントリ」日時を日本語形式で（例: 2月2日(月)00:00）。なければ開始日時と同じ
+- CP_ENTRY_END: 終了日時を日本語形式で（例: 2月24日(火)23:59）
+- END_CP_DATETIME_TIMER_1〜5: 各実施日のyyyy/mm/dd 23:59形式。実施日が3日なら1〜3に設定、4・5は空文字。例: "2026/02/03 23:59"
+- START_CP_DATETIME_TIMER_2〜5: 各実施日（2日目以降）の **前の実施日の翌日00:00** をyyyy/mm/dd 00:00形式で返す。つまり「前のEND_CP_DATETIME_TIMER_{N-1}の翌日」。例えば「火曜（5/5・12・19・26）」の場合、END_TIMER_1=5/5 23:59なのでSTART_TIMER_2 = "2026/05/06 00:00"、END_TIMER_2=5/12 23:59なのでSTART_TIMER_3 = "2026/05/13 00:00"、START_TIMER_4 = "2026/05/20 00:00"。連続日（例: 2/3・4・5）も同様（_2 = "2026/02/04 00:00"）。1日目はなし。実施日が3日なら2〜3に設定、4・5は空文字。
+- CP_THIS_WEEK_1_START〜5_END: 各実施日の開始・終了を日本語形式で（例: 2月3日(火)00:00、2月3日(火)23:59）。未使用枠は空文字。曜日は実施日の正確な曜日を設定
+
+---
+${draft}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers,
+      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:4000,
+        messages:[{role:'user',content:prompt}] })
+    });
+    if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.error?.message||`API Error ${res.status}`); }
+    const data = await res.json();
+    let raw = data.content?.map(b=>b.text||'').join('')||'';
+    raw = raw.replace(/^```json?\n?/i,'').replace(/\n?```$/,'').trim();
+    const obj = JSON.parse(raw);
+    FIELDS.forEach(f => { if (obj[f.key] !== undefined) vals[f.key] = obj[f.key]; });
+    buildFields();
+    FIELDS.forEach(f => {
+      if (obj[f.key] !== undefined && obj[f.key] !== '') {
+        const el = document.getElementById(`f-${f.key}`);
+        if (el) el.classList.add('auto');
+      }
+    });
+  } catch(e) { showErr('抽出に失敗: ' + e.message); }
+  finally { _stopExtractTimer(); btn.textContent='✦ AIで項目を自動抽出'; btn.disabled=false; }
+}
+
+async function _doExtractPage(draft, headers, btn) {
+  const prompt = `以下は【ページ設定】バックログです。以下の情報をJSONのみで返してください。
+コードブロック・説明文は不要。JSONオブジェクトだけ。
+
+抽出ルール:
+- bnr_id: 原稿内の商品詳細URL（例: /products/1867185802）の数字列の先頭3桁。例: 1867185802 → "186"
+- start_timer: タイトル行に「（公開日）」と明記されている日時のみを参照（yyyy/mm/dd hh:mm形式・月日時分は必ず2桁にゼロ埋め 例: 2026/3/4 0:00 → "2026/03/04 00:00"、2026/3/10 0:00 → "2026/03/10 00:00"）。「即時」「即日」等の文言がある場合（例: "2026/5/8 即時（公開日）"）は、日付が明記されていればその日付を「yyyy/mm/dd 00:00」として返すこと（例: "2026/05/08 00:00"）。日付が一切ない場合のみ空文字""を返す。「（公開日）」の記載がない場合も空文字""。「0:00」は午前0時を意味する有効な時刻であり、必ずyyyy/mm/dd 00:00として出力すること。「登録日yyyy/mm/dd hh:mm:ss」は絶対に使用しないこと
+- end_timer: タイトル行の「（公開終了）」と明記されている日時（yyyy/mm/dd hh:mm形式・月日時分は必ず2桁にゼロ埋め）。「m/d hh:mm」のように年が省略されている場合はタイトル行の年（例: 2026）を補完すること（例: 「～3/10 23:59（公開終了）」→ "2026/03/10 23:59"）。記載がなければ空文字""
+- banners: 「n番目」で始まる行を全て走査し、以下のtypeに応じて配列に追加する。
+  【最重要】「n番目」行は、明確な変更指示キーワード（下記type判定に該当するもの）がある場合のみ抽出する。単に「1番目 お試し」「4番目 ギフト」のようにバナー名だけが列挙されている行は、それが既存バナーの一覧説明であるため絶対に抽出しないこと。今回変更されないバナーをスニペットに含めるとデグレを起こすため厳禁。
+  type判定:
+  - 直後に「バナー画像」と「リンク先URL」の両方が続く（添付画像と新規URLの両方が当該バナー専用に明記されている） → type: "add"（新規追加バナー）
+  - 行内に「画像のみ変更」「バナー画像のみ変更」「画像変更」のいずれかの文字がある → type: "img_change"（画像ファイルのみ変更）
+  - 行内に「終了日変更」という文字がある → type: "end_change"（終了日変更のみ）
+  - 行内に「並び順のみ変更」「並び替え」「順序変更」等がある → 除外（バナー追加ではないため）
+  - 上記いずれにも該当しない（単なるリスト項目・既存バナーの参照・削除対象・並び順変更） → 除外
+  ※ページ全体のリンク先URL（タイトル直下や原稿冒頭の「商品詳細URL」等）を、変更指示のない「n番目」行に流用しないこと。
+  各要素:
+  - type: "add" / "img_change" / "end_change"
+  - index: 「n番目」のテキスト（例: "1番目"）
+  - alt: 行内の「n番目」「追加」「画像のみ変更」「画像変更」「終了日変更」「※...」「（mm/dd hh:mm削除）」等を除いたテキスト。除去後に空になる場合は、その行に含まれる削除日（例:「3/10」）と一致する【mm/dd(削除)】対応詳細セクション内の「★★〇〇　削除★★」または「★★削除★★\n〇〇」から〇〇部分をaltとして取得する。それもなければ空文字
+  - url: type="add"の場合、対応する「リンク先URL」の値。type="img_change"/"end_change"は空文字
+  - img: type="add"/"img_change"の場合、「添付ファイルを追加」以降のファイル名から選択する（ファイル名そのままを使用、拡張子含む）。選択ルール: ①altテキストと意味的・音韻的に最も近いファイル名を優先。②同一プレフィックスでサイズ違いのファイルが複数ある場合（例: cp202604948_300x300.jpg, cp202604948_640x200.jpg, cp202604948_900x150.jpg）、PC用の横長バナー（ファイル名に「980x150」「900x150」等の横長サイズを含むもの）を選択すること。300x300（サムネイル）や640x200（SP用）は選ばない。type="end_change"は空文字
+  - confidence: type="add"/"img_change"でマッチングが確信できる場合は"high"、不確かな場合は"low"。type="end_change"は"high"
+  - start_date: type="add"の場合、そのバナー自身の追加行または詳細に具体的な開始日時が記載されていればyyyy/mm/dd hh:mm形式で取得。「即時」「即日」「即時公開」等の記載がある場合、または開始日時の記載がない場合は空文字""（グローバルのstart_timerで代替される）。type="img_change"の場合、そのバナーが属する【mm/dd更新】セクションのヘッダーから日時を取得しyyyy/mm/dd hh:mm形式で返す（例:【5/1 0:00更新】→ "2026/05/01 00:00"）。年はタイトル行から補完。type="end_change"は空文字
+  - end_date: 以下の優先順で取得。スコープは必ず「そのバナー自身のn番目ブロック内」に限定すること。他のn番目ブロックの終了日時（「終了日時yyyy/mm/dd...」等）は絶対に混入させないこと。
+    ①自身のn番目行内に「※yyyy/mm/dd hh:mm」または「※yyyy/mm/dd」形式があればyyyy/mm/dd hh:mm形式で取得（時刻なければ"23:59"補完）
+    ②①がなく、かつtype="end_change"の場合は自身のn番目ブロック内の「終了日時yyyy/mm/dd hh:mm」から取得
+    ③①②がなければ【mm/dd更新（削除）】セクションを参照。ただし以下の条件を両方満たす場合のみend_dateを設定する。
+      条件A: 原稿に「【mm/dd更新（削除）】対応詳細」というセクションが存在する
+      条件B: そのセクション内の「★★削除★★」または「★★〇〇　削除★★」に記載されたバナー名が、このバナーのaltと意味的・音韻的に一致する
+      → 条件A・B両方を満たす場合のみ、そのセクションの【mm/dd】からend_dateを設定（例:【5/20更新（削除）】→ "2026/05/20 23:59"）
+      → 条件Bを満たさない（削除セクションに自分のalt名が明記されていない）場合は、削除セクションが存在していても絶対にend_dateを設定しない
+    ④それもなければ空文字""。タイトル行の終了日時はデフォルトにしないこと（ただしtype="img_change"でかつ他に終了日時が取れない場合は、タイトル行の「公開終了」日時を使用してよい）
+    ⑤type="add"/"img_change"のバナーに対しては、他のn番目ブロックにある「終了日時」を絶対に流用しないこと
+  ※連続差し替えパターン: 同じindexに対して複数の【更新】セクションで"add"→"img_change"→"img_change"のように順番に定義されている場合、各バナーのend_dateは空文字でよい（コード側で次のバナーのstart_dateから自動算出する）
+
+---
+${draft}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers,
+      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:1500,
+        messages:[{role:'user',content:prompt}] })
+    });
+    if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.error?.message||`API Error ${res.status}`); }
+    const data = await res.json();
+    let raw = data.content?.map(b=>b.text||'').join('')||'';
+    raw = raw.replace(/^```json?\n?/i,'').replace(/\n?```$/,'').trim();
+    const obj = JSON.parse(raw);
+    buildPageUI(obj);
+  } catch(e) { showErr('抽出に失敗: ' + e.message); }
+  finally { _stopExtractTimer(); btn.textContent='✦ AIで項目を自動抽出'; btn.disabled=false; }
+}
+
+async function _doExtractCoupon(draft, headers, btn) {
+  const prompt = `以下はクーポンの【ページ設定】バックログです。以下の情報をJSONのみで返してください。
+コードブロック・説明文は不要。JSONオブジェクトだけ。
+
+抽出ルール:
+- coupon_name: 「クーポン名」またはバナー画像の直後に記載されているクーポン名テキスト
+- url: 「新規作成ページ」セクション内の「クーポン対象商品」直後のURL（例: https://dshopping.docomo.ne.jp/products/084100000663163?sku=084100000663163）
+- bnr_id: 上記urlのパス末尾の商品コード先頭3文字。例: /products/084100000663163 → "084"（数字・英字問わず先頭3文字）
+- start_timer: クーポン期間の開始日時（yyyy/mm/dd hh:mm形式）
+- end_timer: クーポン期間の終了日時（yyyy/mm/dd hh:mm形式）
+- cp_end: 終了日時を日本語形式で（例: 2026年3月22日(日)23:59）。曜日と時刻の間にスペースなし
+- img_file: 「添付ファイルを追加」以降の添付ファイル名（拡張子含む、最初の1つ）
+
+---
+${draft}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers,
+      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:800,
+        messages:[{role:'user',content:prompt}] })
+    });
+    if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.error?.message||`API Error ${res.status}`); }
+    const data = await res.json();
+    let raw = data.content?.map(b=>b.text||'').join('')||'';
+    raw = raw.replace(/^```json?\n?/i,'').replace(/\n?```$/,'').trim();
+    const obj = JSON.parse(raw);
+    // クーポンデータをpageDataに格納
+    pageData = { coupon: true, ...obj };
+    buildCouponUI(obj);
+  } catch(e) { showErr('抽出に失敗: ' + e.message); }
+  finally { _stopExtractTimer(); btn.textContent='✦ AIで項目を自動抽出'; btn.disabled=false; }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// HELPERS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function getVal(key) {
+  const el = document.getElementById(`f-${key}`);
+  return el ? el.value.trim() : (vals[key]||'');
+}
+function getValues() {
+  const v = {};
+  FIELDS.forEach(f => v[f.key] = getVal(f.key));
+  return v;
+}
+function trimDayTime(s) { return (s||'').replace(/\)\s+(\d)/g,')$1'); }
+
+// 「yyyy年m月d日(X)hh:mm」の(X)を正しい曜日に置き換える
+const WEEKDAYS = ['日','月','火','水','木','金','土'];
+function fixWeekday(s) {
+  return (s||'').replace(/(\d{4})年(\d{1,2})月(\d{1,2})日\([^)]+\)/g, (_, y, m, d) => {
+    const dow = WEEKDAYS[new Date(+y, +m - 1, +d).getDay()];
+    return `${y}年${m}月${d}日(${dow})`;
+  });
+}
+function stripZeroMonth(ym) { return (ym||'').replace(/年0(\d)月/,'年$1月'); }
+function fmtNum(n) { return Number(String(n).replace(/[^\d]/g,'')).toLocaleString('ja-JP'); }
+
+// ポイント進呈年月: 原稿に月の記載がない場合はEND_DATETIME_TIMERから自動計算
+// offset=1 → 翌月（下旬）、offset=2 → 翌々月（上旬）
+function derivePointYM(v, ymKey, offset) {
+  const ym = stripZeroMonth(v[ymKey] || '');
+  if (ym) return ym;
+  const endDt = (v.END_DATETIME_TIMER || '').trim();
+  const m = endDt.match(/(\d{4})\/(\d{2})/);
+  if (!m) return '';
+  let year = parseInt(m[1], 10);
+  let month = parseInt(m[2], 10) + offset;
+  while (month > 12) { month -= 12; year++; }
+  return `${year}年${month}月`;
+}
+
+// バナーファイル名を優先度（980x150 > 640x200 > その他横長）で選択
+function pickBannerFile(v) {
+  const candidates = [v.BNR_PC_FILE, v.BNR_SP_FILE].filter(Boolean);
+  const has = (f, ...nums) => nums.every(n => f.includes(String(n)));
+  // ① 980x150 を最優先
+  const f980 = candidates.find(f => has(f, '980x150') || (has(f, '980') && has(f, '150')));
+  if (f980) return f980;
+  // ② その他のPC横長（900x150等、幅>高さかつ高さ≦200）
+  const pcWide = candidates.find(f => {
+    const m = f.match(/(\d+)[x×](\d+)/i);
+    return m && parseInt(m[1]) > parseInt(m[2]) && parseInt(m[2]) <= 200 && !f.includes('640x200');
+  });
+  if (pcWide) return pcWide;
+  // ③ 640x200（SP用）
+  const f640 = candidates.find(f => has(f, '640x200') || (has(f, '640') && has(f, '200')));
+  if (f640) return f640;
+  // ④ その他の横長
+  const other = candidates.find(f => {
+    const m = f.match(/(\d+)[x×](\d+)/i);
+    return m && parseInt(m[1]) > parseInt(m[2]);
+  });
+  return other || candidates[0] || '';
+}
+
+function stripComments(html) {
+  const lines = html.split('\n');
+  const result = [];
+  for (let line of lines) {
+    const trimmed = line.trim();
+    if (/^<!--.*?-->$/.test(trimmed)) continue;
+    const cleaned = line.replace(/<!--.*?-->/g,'').replace(/\s+$/,'');
+    if (cleaned.trim()==='' && trimmed!=='') continue;
+    result.push(cleaned);
+  }
+  return result.join('\n').replace(/\n{3,}/g,'\n\n');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// BUILD — CP MODE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function buildCampaignHtml() {
+  const v = getValues();
+  // エントリー有の場合はentryテンプレートを使用
+  let html = v.ENTRY === '有' ? TEMPLATE_ENTRY_HTML : TEMPLATE_HTML;
+  // MV画像: BNR_PC_FILE / BNR_SP_FILE の実ファイル名で置換（※cp{{CP_ID}}正規化の前に実行）
+  const pcFile = v.BNR_PC_FILE || '';
+  const spFile = v.BNR_SP_FILE || '';
+  if (pcFile || spFile) {
+    html = html.replace(
+      /(<img src="[^"]*img\/)cp\{\{CP_ID\}\}_\{\{BNR_SIZE\}\}\.jpg("[^>]*class="img-fit nosp">)/g,
+      `$1${pcFile || spFile}$2`
+    );
+    html = html.replace(
+      /(<img src="[^"]*img\/)cp\{\{CP_ID\}\}_\{\{BNR_SIZE\}\}\.jpg("[^>]*class="img-fit nopc">)/g,
+      `$1${spFile || pcFile}$2`
+    );
+  }
+  // CP_IDはディレクトリ名そのまま（例: cp202603645）なので、テンプレートの cp{{CP_ID}} を {{CP_ID}} に正規化
+  html = html.split('cp{{CP_ID}}').join('{{CP_ID}}');
+  if (v.TARGET_PRODUCTS==='一部商品') {
+    html = html.replace(
+      /<dd>{{SHOP_NAME}}の<!-- 全商品 --><!-- キャンペーン対象商品は<a href="{{TARGET_URL}}">こちら<\/a> --><\/dd><!-- [^]*?-->/,
+      `<dd>${v.SHOP_NAME}のキャンペーン対象商品は<a href="${v.TARGET_URL}">こちら</a></dd>`
+    );
+  } else {
+    html = html.replace(
+      /<dd>{{SHOP_NAME}}の<!-- 全商品 --><!-- キャンペーン対象商品は<a href="{{TARGET_URL}}">こちら<\/a> --><\/dd><!-- [^]*?-->/,
+      `<dd>${v.SHOP_NAME}の全商品</dd>`
+    );
+  }
+  const limitRaw = v.POINT_LIMIT ? v.POINT_LIMIT.replace(/[^\d]/g,'') : '';
+  if (!limitRaw) {
+    html = html.replace(/[ \t]*{{POINT_LIMIT_LI}}<!--[^]*?-->\n?/,'');
+  } else {
+    html = html.replace(/{{POINT_LIMIT_LI}}<!--[^]*?-->/,
+      `<li>本キャンペーンの進呈ポイント上限は${fmtNum(limitRaw)}ポイントとなります。</li>`);
+  }
+
+  // MIN_PRICE: 購入下限金額があれば<!--n,nnn円以上...-->コメントを展開
+  const minPrice = (v.MIN_PRICE||'').trim();
+  if (minPrice) {
+    html = html.replace(/<!--n,nnn円以上（送料込・税込）-->/g, `${minPrice}円以上（送料込・税込）`);
+    html = html.replace(/<!--n,nnn円以上.送料込・税込.-->/g, `${minPrice}円以上（送料込・税込）`);
+  } else {
+    html = html.replace(/<!--n,nnn円以上（送料込・税込）-->/g, '');
+    html = html.replace(/<!--n,nnn円以上.送料込・税込.-->/g, '');
+  }
+  const cpStart = fixWeekday((v.CP_START||''));
+  const cpEnd   = fixWeekday((v.CP_END||'').replace(/まで$/, '').trim());
+  const ym1 = derivePointYM(v, 'POINT_YM_1', 1);
+  const ym2 = derivePointYM(v, 'POINT_YM_2', 2);
+  // CP_LEAD: 意図的な改行を <br class="nosp"> に変換して1行に整形
+  const cpLead = (v.CP_LEAD||'').split('\n').map(l=>l.trim()).filter(Boolean).join('<br class="nosp">');
+  // 未使用タイマーブロック（END_TIMER_N が空）を丸ごと削除
+  for (let n = 5; n >= 1; n--) {
+    const endKey = `END_CP_DATETIME_TIMER_${n}`;
+    if (!(v[endKey]||'').trim()) {
+      html = html.replace(
+        new RegExp(`\\t*<p[^>]*data-end-date="{{${endKey}}}"[^>]*>[\\s\\S]*?</p>\\n?`),
+        ''
+      );
+    }
+  }
+  // START_TIMER_1 のみ空（事前エントリー期間のため）、2〜5は前回ENDの翌日00:00を自動計算
+  html = html.replace('{{START_CP_DATETIME_TIMER_1}}', '');
+  // START_CP_DATETIME_TIMER_N = END_CP_DATETIME_TIMER_{N-1} の翌日 00:00
+  const calcNextDay = dt => {
+    if (!dt) return '';
+    const d = new Date(dt.replace(/\//g,'-').replace(' ','T'));
+    if (isNaN(d)) return '';
+    d.setDate(d.getDate() + 1);
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} 00:00`;
+  };
+  // AI抽出値を優先。なければ「前のENDの翌日」をフォールバックとして自動計算（連続日CP用）
+  const startTimer2 = (v.START_CP_DATETIME_TIMER_2||'').trim() || calcNextDay(v.END_CP_DATETIME_TIMER_1) || '';
+  const startTimer3 = (v.START_CP_DATETIME_TIMER_3||'').trim() || calcNextDay(v.END_CP_DATETIME_TIMER_2) || '';
+  const startTimer4 = (v.START_CP_DATETIME_TIMER_4||'').trim() || calcNextDay(v.END_CP_DATETIME_TIMER_3) || '';
+  const startTimer5 = (v.START_CP_DATETIME_TIMER_5||'').trim() || calcNextDay(v.END_CP_DATETIME_TIMER_4) || '';
+  const reps = {
+    '{{CP_ID}}':v.CP_ID,'{{CP_NAME}}':v.CP_NAME,'{{CP_LEAD}}':cpLead,
+    '{{START_DATETIME}}':cpStart,'{{END_DATETIME}}':cpEnd,
+    '{{END_DATETIME_PLUS_1MIN}}':v.END_DATETIME_PLUS_1MIN,
+    '{{END_DATETIME_TIMER}}':v.END_DATETIME_TIMER,
+    '{{TARGET_URL}}':v.TARGET_URL,'{{SHOP_NAME}}':v.SHOP_NAME,
+    '{{POINT_RATE}}':v.POINT_RATE,'{{POINT_RATE_MINUS_1}}':v.POINT_RATE_MINUS_1,
+    '{{POINT_YM_1}}':ym1,'{{POINT_YM_2}}':ym2,
+    '{{CAROL}}':v.CAROL||'',
+    '{{CP_DATES}}':v.CP_DATES||'',
+    '{{CP_ENTRY_START}}':v.CP_ENTRY_START||'',
+    '{{CP_ENTRY_END}}':v.CP_ENTRY_END||'',
+    '{{END_CP_DATETIME_TIMER_1}}':v.END_CP_DATETIME_TIMER_1||'',
+    '{{END_CP_DATETIME_TIMER_2}}':v.END_CP_DATETIME_TIMER_2||'',
+    '{{END_CP_DATETIME_TIMER_3}}':v.END_CP_DATETIME_TIMER_3||'',
+    '{{END_CP_DATETIME_TIMER_4}}':v.END_CP_DATETIME_TIMER_4||'',
+    '{{END_CP_DATETIME_TIMER_5}}':v.END_CP_DATETIME_TIMER_5||'',
+    '{{START_CP_DATETIME_TIMER_2}}':startTimer2,
+    '{{START_CP_DATETIME_TIMER_3}}':startTimer3,
+    '{{START_CP_DATETIME_TIMER_4}}':startTimer4,
+    '{{START_CP_DATETIME_TIMER_5}}':startTimer5,
+    '{{CP_THIS_WEEK_1_START}}':v.CP_THIS_WEEK_1_START||'',
+    '{{CP_THIS_WEEK_1_END}}':v.CP_THIS_WEEK_1_END||'',
+    '{{CP_THIS_WEEK_2_START}}':v.CP_THIS_WEEK_2_START||'',
+    '{{CP_THIS_WEEK_2_END}}':v.CP_THIS_WEEK_2_END||'',
+    '{{CP_THIS_WEEK_3_START}}':v.CP_THIS_WEEK_3_START||'',
+    '{{CP_THIS_WEEK_3_END}}':v.CP_THIS_WEEK_3_END||'',
+    '{{CP_THIS_WEEK_4_START}}':v.CP_THIS_WEEK_4_START||'',
+    '{{CP_THIS_WEEK_4_END}}':v.CP_THIS_WEEK_4_END||'',
+    '{{CP_THIS_WEEK_5_START}}':v.CP_THIS_WEEK_5_START||'',
+    '{{CP_THIS_WEEK_5_END}}':v.CP_THIS_WEEK_5_END||'',
+  };
+  for (const [ph,val] of Object.entries(reps)) html = html.split(ph).join(val);
+  return stripComments(html);
+}
+
+function buildFinishedHtml() {
+  const v = getValues();
+  let html = TEMPLATE_FINISHED_HTML;
+  // MV画像: 実ファイル名で置換（※cp{{CP_ID}}正規化の前に実行）
+  const pcFileF = v.BNR_PC_FILE || '';
+  const spFileF = v.BNR_SP_FILE || '';
+  if (pcFileF || spFileF) {
+    html = html.replace(
+      /(<img src="[^"]*img\/)cp\{\{CP_ID\}\}_\{\{BNR_SIZE\}\}\.jpg("[^>]*class="img-fit nosp">)/g,
+      `$1${pcFileF || spFileF}$2`
+    );
+    html = html.replace(
+      /(<img src="[^"]*img\/)cp\{\{CP_ID\}\}_\{\{BNR_SIZE\}\}\.jpg("[^>]*class="img-fit nopc">)/g,
+      `$1${spFileF || pcFileF}$2`
+    );
+  }
+  html = html.split('cp{{CP_ID}}').join('{{CP_ID}}');
+  const reps = {
+    '{{CP_ID}}':v.CP_ID,
+    '{{CP_NAME}}':v.CP_NAME,
+    '{{TARGET_URL}}':v.TARGET_URL,
+  };
+  for (const [ph,val] of Object.entries(reps)) html = html.split(ph).join(val);
+  return stripComments(html);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// BUILD — SPECIAL_CP MODE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function buildSpecialCpHtml() {
+  const v = getValues();
+  let html = TEMPLATE_HTML;
+  // POINT_LIMIT処理
+  const limitRaw = v.POINT_LIMIT ? v.POINT_LIMIT.replace(/[^\d]/g,'') : '';
+  if (!limitRaw) {
+    html = html.replace(/[ \t]*{{POINT_LIMIT_LI}}<!--[^]*?-->\n?/,'');
+  } else {
+    html = html.replace(/{{POINT_LIMIT_LI}}<!--[^]*?-->/,
+      `<li>本キャンペーンの進呈ポイント上限は${fmtNum(limitRaw)}ポイントとなります。</li>`);
+  }
+  // 対象商品
+  if (v.TARGET_PRODUCTS==='一部商品') {
+    html = html.replace(
+      /<dd>{{SHOP_NAME}}の<!-- 全商品 --><!-- キャンペーン対象商品は<a href="{{TARGET_URL}}">こちら<\/a> --><\/dd><!-- [^]*?-->/,
+      `<dd>${v.SHOP_NAME}のキャンペーン対象商品は<a href="${v.TARGET_URL}">こちら</a></dd>`
+    );
+  } else {
+    html = html.replace(
+      /<dd>{{SHOP_NAME}}の<!-- 全商品 --><!-- キャンペーン対象商品は<a href="{{TARGET_URL}}">こちら<\/a> --><\/dd><!-- [^]*?-->/,
+      `<dd>${v.SHOP_NAME}の全商品</dd>`
+    );
+  }
+  // MIN_PRICE展開
+  const minPrice = (v.MIN_PRICE||'').trim();
+  if (minPrice) {
+    html = html.replace(/<!--n,nnn円以上（送料込・税込）-->/g, `${minPrice}円以上（送料込・税込）`);
+    html = html.replace(/<!--n,nnn円以上.送料込・税込.-->/g, `${minPrice}円以上（送料込・税込）`);
+  } else {
+    html = html.replace(/<!--n,nnn円以上（送料込・税込）-->/g, '');
+    html = html.replace(/<!--n,nnn円以上.送料込・税込.-->/g, '');
+  }
+  // キャンペーン特典ブロックをCP_TOKUTENで丸ごと置換
+  const tokutenRaw = (v.CP_TOKUTEN||'').trim();
+  // 1行目が「キャンペーン特典」そのものなら除去（dtタグと重複するため）
+  const tokutenLines = tokutenRaw.split('\n');
+  if (/^キャンペーン特典/.test(tokutenLines[0].trim())) tokutenLines.shift();
+  const tokuten = tokutenLines.join('\n').trim();
+  if (tokuten) {
+    html = html.replace(
+      /<dt>キャンペーン特典<\/dt>[\s\S]*?<\/dd>/,
+      `<dt>キャンペーン特典</dt>\n\t\t\t\t\t\t\t\t\t\t${tokuten}`
+    );
+  }
+  const cpStart = fixWeekday((v.CP_START||''));
+  const cpEnd   = fixWeekday((v.CP_END||'').replace(/まで$/, '').trim());
+  const ym1 = derivePointYM(v, 'POINT_YM_1', 1);
+  const ym2 = derivePointYM(v, 'POINT_YM_2', 2);
+  const cpLead = (v.CP_LEAD||'').split('\n').map(l=>l.trim()).filter(Boolean).join('<br class="nosp">');
+  // バナーは実ファイル名を使用（CP_IDが英数字混在のためパターンマッチで置換）
+  html = html.replace(
+    /(<img src="[^"]*img\/)cp{{CP_ID}}_{{BNR_SIZE}}\.jpg("[^>]*class="img-fit nosp">)/g,
+    `$1${v.BNR_PC_FILE||v.BNR_SP_FILE||''}$2`
+  );
+  html = html.replace(
+    /(<img src="[^"]*img\/)cp{{CP_ID}}_{{BNR_SIZE}}\.jpg("[^>]*class="img-fit nopc">)/g,
+    `$1${v.BNR_SP_FILE||v.BNR_PC_FILE||''}$2`
+  );
+  // {{BNR_SIZE}}パターンが残っている場合も処理
+  html = html.replace(/(<img src="[^"]*img\/)[^"]*{{BNR_SIZE}}\.jpg("[^>]*class="img-fit nosp">)/g,
+    `$1${v.BNR_PC_FILE||v.BNR_SP_FILE||''}$2`);
+  html = html.replace(/(<img src="[^"]*img\/)[^"]*{{BNR_SIZE}}\.jpg("[^>]*class="img-fit nopc">)/g,
+    `$1${v.BNR_SP_FILE||v.BNR_PC_FILE||''}$2`);
+  // special_cp: テンプレート内の cp{{CP_ID}} から cp プレフィックスを除去
+  html = html.split('cp{{CP_ID}}').join('{{CP_ID}}');
+  const reps = {
+    '{{CP_ID}}':v.CP_ID,'{{CP_NAME}}':v.CP_NAME,'{{CP_LEAD}}':cpLead,
+    '{{START_DATETIME}}':cpStart,'{{END_DATETIME}}':cpEnd,
+    '{{END_DATETIME_PLUS_1MIN}}':v.END_DATETIME_PLUS_1MIN,
+    '{{END_DATETIME_TIMER}}':v.END_DATETIME_TIMER,
+    '{{TARGET_URL}}':v.TARGET_URL,'{{SHOP_NAME}}':v.SHOP_NAME,
+    '{{POINT_YM_1}}':ym1,'{{POINT_YM_2}}':ym2,
+    // POINT_RATE系は特典ブロック置換済みなので残骸を空に
+    '{{POINT_RATE}}':'','{{POINT_RATE_MINUS_1}}':'',
+  };
+  for (const [ph,val] of Object.entries(reps)) html = html.split(ph).join(val);
+  return stripComments(html);
+}
+
+function buildSpecialListSnippet() {
+  const v = getValues();
+  const cpEnd = fixWeekday((v.CP_END||'').replace(/まで$/, '').trim());
+  const imgFile = v.BNR_300_FILE || `${v.CP_ID}_300x300.jpg`;
+  // CP一覧の表示開始は事前エントリ開始日時を優先（なければ通常のSTART_DATETIME_TIMER）
+  const listStart = (v.ENTRY_START_TIMER||'').trim() || v.START_DATETIME_TIMER;
+  return `<li class="view_timer" data-start-date="${listStart}" data-end-date="${v.END_DATETIME_TIMER}" style="display:none">
+\t<a href="/campaign/${v.CP_ID}/">
+\t\t<img src="/campaign/${v.CP_ID}/img/${imgFile}" alt="" class="img-fit">
+\t\t<p class="campTime">${cpEnd}まで</p>
+\t\t<p class="campTitle">${v.CP_NAME}</p>
+\t</a>
+</li>`;
+}
+
+function buildSpecialBannerSnippet() {
+  const v = getValues();
+  const bannerUrl = (v.CP_BANNER_URL||'').trim() || v.CP_URL;
+  const imgFile = v.BNR_PC_FILE || v.BNR_SP_FILE || '';
+  return `<div class="view_timer" data-start-date="${v.START_DATETIME_TIMER}" data-end-date="${v.END_DATETIME_TIMER}" style="display:none">
+\t<a href="${bannerUrl}">
+\t\t<img src="/parts/products/img/${v.BNR_ID}/${imgFile}" width="100%" alt="${v.CP_NAME}">
+\t</a>
+</div>`;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// BUILD — ENTRY_CP MODE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function buildEntryCpHtml() {
+  const v = getValues();
+  let html = TEMPLATE_ENTRY_CP_HTML;
+  html = html.split('cp{{CP_ID}}').join('{{CP_ID}}');
+  // POINT_LIMIT処理
+  const limitRaw = v.POINT_LIMIT ? v.POINT_LIMIT.replace(/[^\d]/g,'') : '';
+  if (!limitRaw) {
+    html = html.replace(/[ \t]*{{POINT_LIMIT_LI}}<!--[^]*?-->\n?/,'');
+  } else {
+    html = html.replace(/{{POINT_LIMIT_LI}}<!--[^]*?-->/,
+      `<li>本キャンペーンの進呈ポイント上限は${fmtNum(limitRaw)}ポイントとなります。</li>`);
+  }
+  // 対象商品
+  if (v.TARGET_PRODUCTS==='一部商品') {
+    html = html.replace(
+      /<dd>{{SHOP_NAME}}の<!-- 全商品 --><!-- キャンペーン対象商品は<a href="{{TARGET_URL}}">こちら<\/a> --><\/dd><!-- [^]*?-->/,
+      `<dd>${v.SHOP_NAME}のキャンペーン対象商品は<a href="${v.TARGET_URL}">こちら</a></dd>`
+    );
+  } else {
+    html = html.replace(
+      /<dd>{{SHOP_NAME}}の<!-- 全商品 --><!-- キャンペーン対象商品は<a href="{{TARGET_URL}}">こちら<\/a> --><\/dd><!-- [^]*?-->/,
+      `<dd>${v.SHOP_NAME}の全商品</dd>`
+    );
+  }
+
+  // MIN_PRICE: 購入下限金額があれば<!--n,nnn円以上...-->コメントを展開、なければそのまま削除
+  const minPrice = (v.MIN_PRICE||'').trim();
+  if (minPrice) {
+    html = html.replace(/<!--n,nnn円以上（送料込・税込）-->/g, `${minPrice}円以上（送料込・税込）`);
+    html = html.replace(/<!--n,nnn円以上\(送料込・税込\)-->/g, `${minPrice}円以上（送料込・税込）`);
+  } else {
+    html = html.replace(/<!--n,nnn円以上（送料込・税込）-->/g, '');
+    html = html.replace(/<!--n,nnn円以上\(送料込・税込\)-->/g, '');
+  }
+  const cpStart = fixWeekday((v.CP_START||''));
+  const cpEnd   = fixWeekday((v.CP_END||'').replace(/まで$/, '').trim());
+  const ym1 = derivePointYM(v, 'POINT_YM_1', 1);
+  const ym2 = derivePointYM(v, 'POINT_YM_2', 2);
+  // CP_DATES形式（各日00:00 ～ 23:59まで）を通常期間表示に置換
+  html = html.replace(
+    /<dd>{{CP_DATES}}　各日00:00 ～ 23:59まで<\/dd>[^\n]*/,
+    '<dd>{{START_DATETIME}} ～ {{END_DATETIME}}まで</dd>'
+  );
+  // CP_LEAD改行処理
+  const cpLead = (v.CP_LEAD||'').split('\n').map(l=>l.trim()).filter(Boolean).join('<br class="nosp">');
+  // {{BNR_FILE_NAME}} をnosp/nopcで実ファイル名に置換
+  html = html.replace(
+    /(<img src="[^"]*img\/){{BNR_FILE_NAME}}("[^>]*class="img-fit nosp">)/g,
+    `$1${v.BNR_PC_FILE||v.BNR_SP_FILE||''}$2`
+  );
+  html = html.replace(
+    /(<img src="[^"]*img\/){{BNR_FILE_NAME}}("[^>]*class="img-fit nopc">)/g,
+    `$1${v.BNR_SP_FILE||v.BNR_PC_FILE||''}$2`
+  );
+  // 未使用タイマーブロック（END_TIMER_N が空）を丸ごと削除
+  for (let n = 5; n >= 1; n--) {
+    const endKey = `END_CP_DATETIME_TIMER_${n}`;
+    if (!(v[endKey]||'').trim()) {
+      html = html.replace(
+        new RegExp(`\\t*<p[^>]*data-end-date="{{${endKey}}}"[^>]*>[\\s\\S]*?</p>\\n?`),
+        ''
+      );
+    }
+  }
+  // 週次タイマーが全て空で mainText が空になった場合、通常期間表示に差し替え
+  html = html.replace(
+    /<div class="mainText">\s*<\/div>/,
+    `<div class="mainText lh50p"><strong>${cpStart} ～ <br class="nopc">${cpEnd}まで</strong></div>`
+  );
+  // START_TIMER_1 のみ空（事前エントリー期間のため）、2〜5は前回ENDの翌日00:00を自動計算
+  html = html.replace('{{START_CP_DATETIME_TIMER_1}}', '');
+  // START_CP_DATETIME_TIMER_N = END_CP_DATETIME_TIMER_{N-1} の翌日 00:00
+  const calcNextDay = dt => {
+    if (!dt) return '';
+    const d = new Date(dt.replace(/\//g,'-').replace(' ','T'));
+    if (isNaN(d)) return '';
+    d.setDate(d.getDate() + 1);
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} 00:00`;
+  };
+  // AI抽出値を優先。なければ「前のENDの翌日」をフォールバックとして自動計算（連続日CP用）
+  const startTimer2 = (v.START_CP_DATETIME_TIMER_2||'').trim() || calcNextDay(v.END_CP_DATETIME_TIMER_1) || '';
+  const startTimer3 = (v.START_CP_DATETIME_TIMER_3||'').trim() || calcNextDay(v.END_CP_DATETIME_TIMER_2) || '';
+  const startTimer4 = (v.START_CP_DATETIME_TIMER_4||'').trim() || calcNextDay(v.END_CP_DATETIME_TIMER_3) || '';
+  const startTimer5 = (v.START_CP_DATETIME_TIMER_5||'').trim() || calcNextDay(v.END_CP_DATETIME_TIMER_4) || '';
+  const reps = {
+    '{{CP_ID}}':v.CP_ID,'{{CP_NAME}}':v.CP_NAME,'{{CP_LEAD}}':cpLead,
+    '{{START_DATETIME}}':cpStart,'{{END_DATETIME}}':cpEnd,
+    '{{END_DATETIME_PLUS_1MIN}}':v.END_DATETIME_PLUS_1MIN,
+    '{{END_DATETIME_TIMER}}':v.END_DATETIME_TIMER,
+    '{{TARGET_URL}}':v.TARGET_URL,'{{SHOP_NAME}}':v.SHOP_NAME,
+    '{{POINT_RATE}}':v.POINT_RATE,'{{POINT_RATE_MINUS_1}}':v.POINT_RATE_MINUS_1,
+    '{{POINT_YM_1}}':ym1,'{{POINT_YM_2}}':ym2,
+    '{{CAROL}}':v.CAROL||'',
+    '{{CP_DATES}}':v.CP_DATES||'',
+    '{{CP_ENTRY_START}}':v.CP_ENTRY_START||'',
+    '{{CP_ENTRY_END}}':v.CP_ENTRY_END||'',
+    '{{END_CP_DATETIME_TIMER_1}}':v.END_CP_DATETIME_TIMER_1||'',
+    '{{END_CP_DATETIME_TIMER_2}}':v.END_CP_DATETIME_TIMER_2||'',
+    '{{END_CP_DATETIME_TIMER_3}}':v.END_CP_DATETIME_TIMER_3||'',
+    '{{END_CP_DATETIME_TIMER_4}}':v.END_CP_DATETIME_TIMER_4||'',
+    '{{END_CP_DATETIME_TIMER_5}}':v.END_CP_DATETIME_TIMER_5||'',
+    '{{START_CP_DATETIME_TIMER_2}}':startTimer2,
+    '{{START_CP_DATETIME_TIMER_3}}':startTimer3,
+    '{{START_CP_DATETIME_TIMER_4}}':startTimer4,
+    '{{START_CP_DATETIME_TIMER_5}}':startTimer5,
+    '{{CP_THIS_WEEK_1_START}}':v.CP_THIS_WEEK_1_START||'',
+    '{{CP_THIS_WEEK_1_END}}':v.CP_THIS_WEEK_1_END||'',
+    '{{CP_THIS_WEEK_2_START}}':v.CP_THIS_WEEK_2_START||'',
+    '{{CP_THIS_WEEK_2_END}}':v.CP_THIS_WEEK_2_END||'',
+    '{{CP_THIS_WEEK_3_START}}':v.CP_THIS_WEEK_3_START||'',
+    '{{CP_THIS_WEEK_3_END}}':v.CP_THIS_WEEK_3_END||'',
+    '{{CP_THIS_WEEK_4_START}}':v.CP_THIS_WEEK_4_START||'',
+    '{{CP_THIS_WEEK_4_END}}':v.CP_THIS_WEEK_4_END||'',
+    '{{CP_THIS_WEEK_5_START}}':v.CP_THIS_WEEK_5_START||'',
+    '{{CP_THIS_WEEK_5_END}}':v.CP_THIS_WEEK_5_END||'',
+  };
+  for (const [ph,val] of Object.entries(reps)) html = html.split(ph).join(val);
+  return stripComments(html);
+}
+
+function buildEntryCpFinishedHtml() {
+  const v = getValues();
+  let html = TEMPLATE_FINISHED_HTML;
+  const pcFile = v.BNR_PC_FILE || v.BNR_SP_FILE || '';
+  const spFile = v.BNR_SP_FILE || v.BNR_PC_FILE || '';
+  // 画像置換を cp{{CP_ID}} 正規化より先に行う
+  html = html.split('\n').map(line => {
+    if (!line.includes('img-fit')) return line;
+    if (line.includes('nosp')) {
+      return line
+        .replace(/cp{{CP_ID}}_{{BNR_SIZE}}\.jpg/, pcFile)
+        .replace(/cp[^/]+_{{BNR_SIZE}}\.jpg/, pcFile)
+        .replace(/{{BNR_SIZE}}/, '');
+    }
+    if (line.includes('nopc')) {
+      return line
+        .replace(/cp{{CP_ID}}_{{BNR_SIZE}}\.jpg/, spFile)
+        .replace(/cp[^/]+_{{BNR_SIZE}}\.jpg/, spFile)
+        .replace(/{{BNR_SIZE}}/, '');
+    }
+    return line;
+  }).join('\n');
+  html = html.split('cp{{CP_ID}}').join('{{CP_ID}}');
+  // 残った{{BNR_SIZE}}を念のため除去
+  html = html.replace(/cp{{CP_ID}}_{{BNR_SIZE}}\.jpg/g, pcFile);
+  const reps = {
+    '{{CP_ID}}':v.CP_ID,'{{CP_NAME}}':v.CP_NAME,'{{TARGET_URL}}':v.TARGET_URL,
+  };
+  for (const [ph,val] of Object.entries(reps)) html = html.split(ph).join(val);
+  return stripComments(html);
+}
+
+function buildListSnippet() {
+  const v = getValues();
+  const cpEnd = fixWeekday((v.CP_END||'').replace(/まで$/, '').trim());
+  // entry_cpは実ファイル名を使用
+  const imgFile = currentMode === 'entry_cp' && v.BNR_300_FILE
+    ? v.BNR_300_FILE
+    : `${v.CP_ID}_300x300.jpg`;
+  // CP一覧の表示開始は事前エントリ開始日時を優先（なければ通常のSTART_DATETIME_TIMER）
+  const listStart = (v.ENTRY_START_TIMER||'').trim() || v.START_DATETIME_TIMER;
+  return `<li class="view_timer" data-start-date="${listStart}" data-end-date="${v.END_DATETIME_TIMER}" style="display:none">
+\t<a href="/campaign/${v.CP_ID}/">
+\t\t<img src="/campaign/${v.CP_ID}/img/${imgFile}" alt="" class="img-fit">
+\t\t<p class="campTime">${cpEnd}まで</p>
+\t\t<p class="campTitle">${v.CP_NAME}</p>
+\t</a>
+</li>`;
+}
+
+function buildCpBannerSnippet() {
+  const v = getValues();
+  const bannerUrl = (v.CP_BANNER_URL||'').trim() || v.CP_URL;
+  const imgFile = pickBannerFile(v);
+  return `<div class="view_timer" data-start-date="${v.START_DATETIME_TIMER}" data-end-date="${v.END_DATETIME_TIMER}" style="display:none">
+\t<a href="${bannerUrl}">
+\t\t<img src="/parts/products/img/${v.BNR_ID}/${imgFile}" width="100%" alt="${v.CP_NAME}">
+\t</a>
+</div>`;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// BUILD — PAGE MODE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 終了日時が 00:00 の場合は前日 23:59 に変換（00:00公開終了＝前日23:59まで表示）
+function adjustEndDate(dt) {
+  if (!dt) return dt;
+  dt = dt.trim();
+  if (!/\s00:00$/.test(dt)) return dt;
+  // 年月日を個別にパース（new Date文字列直接渡しはNaNリスクあり）
+  const parts = dt.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\s+00:00/);
+  if (!parts) return dt;
+  const d = new Date(parseInt(parts[1]), parseInt(parts[2]) - 1, parseInt(parts[3]));
+  if (isNaN(d.getTime())) return dt; // NaNガード
+  d.setDate(d.getDate() - 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}/${m}/${day} 23:59`;
+}
+
+function buildPageBannerSnippets() {
+  if (!pageData || !pageData.banners || !pageData.banners.length) {
+    throw new Error('バナーデータがありません。先にAI自動抽出を実行してください。');
+  }
+  // sync from inputs
+  const bnrId    = (document.getElementById('pg-bnr-id')?.value || pageData.bnr_id || '').trim();
+  let   startDt  = (document.getElementById('pg-start')?.value  || pageData.start_timer || '').trim();
+  const endDt    = adjustEndDate((document.getElementById('pg-end')?.value || pageData.end_timer || '').trim());
+  // AIがstart_timerを空で返した場合、ドラフトのタイトル行から直接パース
+  // 「即時」でも日付が明記されていれば yyyy/mm/dd 00:00 として使用する
+  if (!startDt) {
+    const draft = document.getElementById('draft')?.value || '';
+    const titleLine = (draft.match(/【ページ設定】[^\n]*/)||[''])[0];
+    if (/即時|即日/.test(titleLine)) {
+      // 即時パターン: 日付のみ（時刻なし）で「即時」が続く場合 → 00:00 として扱う
+      const mSoku = titleLine.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\s*(?:即時|即日)/);
+      if (mSoku) {
+        startDt = `${mSoku[1]}/${String(mSoku[2]).padStart(2,'0')}/${String(mSoku[3]).padStart(2,'0')} 00:00`;
+      }
+    } else {
+      const m = draft.match(/【ページ設定】[^\n]*?(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})（公開日）/);
+      if (m) {
+        startDt = `${m[1]}/${String(m[2]).padStart(2,'0')}/${String(m[3]).padStart(2,'0')} ${String(m[4]).padStart(2,'0')}:${m[5]}`;
+      }
+    }
+  }
+
+  // 連続差し替えパターン: 同一indexでadd→img_change→img_changeと並ぶ場合、
+  // end_dateが空のバナーには「次のバナーのstart_dateの1分前」を自動設定する
+  const banners = pageData.banners;
+  for (let i = 0; i < banners.length; i++) {
+    const cur = banners[i];
+    if (cur.type === 'end_change') continue;
+    const curEnd = (cur.end_date || '').trim();
+    if (curEnd) continue; // 既にend_dateがあればスキップ
+    // 同一indexの次のバナーを探す
+    const next = banners.slice(i + 1).find(b => b.index === cur.index && b.type !== 'end_change');
+    if (next) {
+      const nextStart = (next.start_date || '').trim();
+      if (nextStart) {
+        // nextStartの1分前を算出
+        const pm = nextStart.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/);
+        if (pm) {
+          const nd = new Date(parseInt(pm[1]), parseInt(pm[2])-1, parseInt(pm[3]), parseInt(pm[4]), parseInt(pm[5]));
+          nd.setMinutes(nd.getMinutes() - 1);
+          const pad = n => String(n).padStart(2,'0');
+          cur.end_date = `${nd.getFullYear()}/${pad(nd.getMonth()+1)}/${pad(nd.getDate())} ${pad(nd.getHours())}:${pad(nd.getMinutes())}`;
+        }
+      }
+    }
+  }
+
+  return banners.map(bnr => {
+    const bnrEndDt   = adjustEndDate((bnr.end_date !== undefined ? bnr.end_date : '').trim());
+    // バナー個別のstart_dateが空でなければそれを使用、空またはundefinedならグローバルstartDtにフォールバック
+    const bnrStartDt = (bnr.start_date !== undefined && bnr.start_date !== '' ? bnr.start_date : startDt).trim();
+    if (bnr.type === 'end_change') {
+      return `<div data-end-date="${bnrEndDt}">\n</div>`;
+    }
+    if (bnr.type === 'img_change') {
+      // 画像のみ変更: URLは同一indexのaddバナーから引き継ぐ。空でもpointer-events:noneは付けない
+      const imgEndDt = bnrEndDt || endDt;
+      const parentAdd = banners.find(b => b.type === 'add' && b.index === bnr.index);
+      const inheritUrl = bnr.url || (parentAdd ? parentAdd.url : '') || '';
+      return `<div class="view_timer" data-start-date="${bnrStartDt}" data-end-date="${imgEndDt}" style="display:none">
+\t<a href="${inheritUrl}">
+\t\t<img src="/parts/products/img/${bnrId}/${bnr.img||''}" width="100%" alt="${bnr.alt||''}">
+\t</a>
+</div>`;
+    }
+    // type="add": フルスニペット
+    const addEndDt = bnrEndDt || endDt;
+    const addUrl = bnr.url || '';
+    const addAStyle = addUrl ? '' : ' style="pointer-events:none;"';
+    return `<div class="view_timer" data-start-date="${bnrStartDt}" data-end-date="${addEndDt}" style="display:none">
+\t<a href="${addUrl}"${addAStyle}>
+\t\t<img src="/parts/products/img/${bnrId}/${bnr.img||''}" width="100%" alt="${bnr.alt||''}">
+\t</a>
+</div>`;
+  }).join('\n');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// GENERATE ALL
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const outputs = {};
+
+function generateAll() {
+  FIELDS.forEach(f => { const inp=document.getElementById(`f-${f.key}`); if(inp) vals[f.key]=inp.value; });
+
+  // END_DATETIME_PLUS_1MIN が空の場合は END_DATETIME_TIMER から自動計算
+  if (!vals['END_DATETIME_PLUS_1MIN'] && vals['END_DATETIME_TIMER']) {
+    const d = new Date(vals['END_DATETIME_TIMER'].replace(/\//g,'-').replace(' ','T'));
+    if (!isNaN(d)) {
+      d.setMinutes(d.getMinutes() + 1);
+      const pad = n => String(n).padStart(2,'0');
+      vals['END_DATETIME_PLUS_1MIN'] = `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      // UIフィールドにも反映
+      const inp = document.getElementById('f-END_DATETIME_PLUS_1MIN');
+      if (inp) inp.value = vals['END_DATETIME_PLUS_1MIN'];
+    }
+  }
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled=true; btn.classList.add('loading');
+  hideErr();
+
+  try {
+    if (currentMode === 'coupon') {
+      outputs.list   = buildCouponListSnippet();
+      outputs.banner = '';
+      outputs.cpOpen = '';
+      outputs.finished = '';
+      document.getElementById('code-list').textContent = outputs.list;
+      switchTab('list');
+    } else if (currentMode === 'special_cp') {
+      const v = getValues();
+      outputs.list   = v.HAS_300 !== '無' ? buildSpecialListSnippet() : '';
+      outputs.cpOpen = buildSpecialCpHtml();
+      outputs.banner = v.HAS_BNR_SECTION !== '無' ? buildSpecialBannerSnippet() : '';
+      outputs.finished = '';
+      if (outputs.list) document.getElementById('code-list').textContent = outputs.list;
+      else { document.getElementById('code-list').textContent='（300x300なし — スキップ）'; document.querySelectorAll('.tab[data-tab="list"]').forEach(t=>t.classList.add('disabled')); }
+      document.getElementById('code-cp-open').textContent = outputs.cpOpen;
+      if (outputs.banner) document.getElementById('code-banner').textContent = outputs.banner;
+      else { document.getElementById('code-banner').textContent='（バナーセクションなし — スキップ）'; document.querySelectorAll('.tab[data-tab="banner"]').forEach(t=>t.classList.add('disabled')); }
+      document.getElementById('tab-finished').style.display = 'none';
+      switchTab('cp-open');
+    } else if (currentMode === 'entry_cp') {
+      const v = getValues();
+      outputs.list   = buildListSnippet();
+      outputs.cpOpen = buildEntryCpHtml();
+      outputs.finished = buildEntryCpFinishedHtml();
+      document.getElementById('code-list').textContent    = outputs.list;
+      document.getElementById('code-cp-open').textContent = outputs.cpOpen;
+      document.getElementById('code-finished').textContent = outputs.finished;
+      // entry_cpでもHAS_BNR_SECTION=有ならバナースニペットを生成
+      if (v.HAS_BNR_SECTION !== '無') {
+        outputs.banner = buildCpBannerSnippet();
+        document.getElementById('code-banner').textContent = outputs.banner;
+        document.querySelectorAll('.tab[data-tab="banner"]').forEach(t => t.classList.remove('disabled'));
+      } else {
+        outputs.banner = '';
+        document.getElementById('code-banner').textContent = '（商品詳細バナーセクションなし — スキップ）';
+        document.querySelectorAll('.tab[data-tab="banner"]').forEach(t => t.classList.add('disabled'));
+      }
+      const tfTab = document.getElementById('tab-finished');
+      tfTab.classList.remove('disabled');
+      tfTab.style.display = '';
+      switchTab('cp-open');
+    } else if (currentMode === 'page') {
+      outputs.banner = buildPageBannerSnippets();
+      outputs.list   = '';
+      outputs.cpOpen = '';
+      outputs.finished = '';
+      document.getElementById('code-banner').textContent = outputs.banner;
+      switchTab('banner');
+    } else {
+      const v = getValues();
+      // HAS_300の有無に関わらず常にCP一覧スニペットを生成（300x300がない場合はデフォルトファイル名で出力）
+      outputs.list = buildListSnippet();
+      document.getElementById('code-list').textContent = outputs.list;
+      document.querySelectorAll('.tab[data-tab="list"]').forEach(t => t.classList.remove('disabled'));
+      outputs.cpOpen = buildCampaignHtml();
+      document.getElementById('code-cp-open').textContent = outputs.cpOpen;
+      // HAS_BNR_SECTION=無 → バナースニペットをスキップ
+      if (v.HAS_BNR_SECTION === '無') {
+        outputs.banner = '';
+        document.getElementById('code-banner').textContent = '（商品詳細バナーセクションなし — スキップ）';
+        document.querySelectorAll('.tab[data-tab="banner"]').forEach(t => t.classList.add('disabled'));
+      } else {
+        outputs.banner = buildCpBannerSnippet();
+        document.getElementById('code-banner').textContent = outputs.banner;
+        document.querySelectorAll('.tab[data-tab="banner"]').forEach(t => t.classList.remove('disabled'));
+      }
+      // エントリー有: finished.html を生成してタブ④表示
+      if (v.ENTRY === '有') {
+        outputs.finished = buildFinishedHtml();
+        document.getElementById('code-finished').textContent = outputs.finished;
+        document.getElementById('tab-finished').style.display = '';
+      } else {
+        outputs.finished = '';
+        document.getElementById('tab-finished').style.display = 'none';
+      }
+    }
+    document.getElementById('empty').style.display = 'none';
+    const pill = document.getElementById('status-pill');
+    pill.style.display=''; setTimeout(()=>pill.style.display='none',3000);
+  } catch(e) {
+    showErr('生成に失敗: ' + e.message);
+  } finally {
+    btn.disabled=false; btn.classList.remove('loading');
+  }
+}
+
+// ━━━ RESET ━━━
+function resetAll() {
+  document.getElementById('draft').value = '';
+  FIELDS.forEach(f => vals[f.key] = f.key === 'TARGET_PRODUCTS' ? '全商品' : '');
+  buildFields();
+  pageData = null;
+  // outputsをクリア
+  Object.keys(outputs).forEach(k => delete outputs[k]);
+  document.getElementById('page-meta').innerHTML = '';
+  document.getElementById('page-banners').innerHTML = '';
+  ['list','cp-open','banner','finished'].forEach(k => {
+    const el = document.getElementById(`code-${k}`);
+    if (el) el.textContent = '';
+  });
+  document.getElementById('empty').style.display = '';
+  document.getElementById('status-pill').style.display = 'none';
+  document.getElementById('err-box').classList.remove('show');
+  document.getElementById('mode-badge').style.display = 'none';
+  document.getElementById('tab-finished').style.display = 'none';
+  document.getElementById('cp-mode-ui').style.display = '';
+  document.getElementById('page-mode-ui').style.display = 'none';
+  // ボタンのdisabled状態をリセット
+  const extBtn = document.getElementById('ext-btn');
+  extBtn.disabled = false;
+  extBtn.textContent = '✦ AIで項目を自動抽出';
+  const genBtn = document.getElementById('gen-btn');
+  genBtn.disabled = false;
+  genBtn.classList.remove('loading');
+  applyMode('cp');
+  switchTab('list');
+}
+
+// ━━━ TAB ━━━
+let activeTab = 'list';
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab===tab));
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.getElementById(`pane-${tab}`)?.classList.add('active');
+}
+
+// ━━━ COPY ━━━
+function getActiveCode() {
+  const map = {list:'list','cp-open':'cp-open',banner:'banner',finished:'finished'};
+  return document.getElementById(`code-${map[activeTab]}`)?.textContent||'';
+}
+const TAB_LABELS = {list:'CP一覧 スニペット','cp-open':'CPページ',banner:'バナーパーツ スニペット',finished:'エントリー完了ページ'};
+
+function copyActive() {
+  const code = getActiveCode();
+  if (!code) return;
+  const label = TAB_LABELS[activeTab] || activeTab;
+  const flash = () => {
+    const pill = document.getElementById('copy-status-pill');
+    pill.textContent = 'スニペットをコピーしました';
+    pill.style.display = '';
+    setTimeout(() => { pill.style.display = 'none'; }, 2000);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(flash).catch(() => fallbackCopy(code, flash));
+  } else {
+    fallbackCopy(code, flash);
+  }
+}
+
+
+function fallbackCopy(text, cb) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); cb(); } catch(e) { alert('コピーに失敗しました。手動でコピーしてください。'); }
+  document.body.removeChild(ta);
+}
+
+// ━━━ DL ━━━
+async function dlActive() {
+  if (currentMode === 'page') {
+    // pageモード: {BNR_ID}/bnr_snippets.html をZIPでDL
+    const code = outputs.banner || '';
+    if (!code) { showErr('先に「全ファイルを生成」を実行してください。'); return; }
+    const bnrId = (document.getElementById('pg-bnr-id')?.value || pageData?.bnr_id || 'bnr').trim();
+    const zip = new JSZip();
+    zip.folder(bnrId).file('bnr_snippets.html', code);
+    const blob = await zip.generateAsync({type:'blob'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href=url; a.download=`${bnrId}.zip`; a.style.display='none';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  } else {
+    if (!outputs.cpOpen) { showErr('先に「全ファイルを生成」を実行してください。'); return; }
+    const v   = getValues();
+    const cpId = v.CP_ID || 'cp';
+    const zip = new JSZip();
+    const folder = zip.folder(cpId);
+    folder.file('index.html', outputs.cpOpen || '');
+    if ((v.ENTRY === '有' || currentMode === 'entry_cp') && outputs.finished) {
+      folder.file('finished.html', outputs.finished);
+    }
+    folder.folder('img').file('.gitkeep', '');
+    const blob = await zip.generateAsync({type:'blob'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href=url; a.download=`${cpId}.zip`; a.style.display='none';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+}
+
+// ━━━ UTILS ━━━
+function showErr(msg) {
+  const el = document.getElementById('err-box');
+  el.textContent='⚠ '+msg; el.classList.add('show');
+}
+function hideErr() {
+  document.getElementById('err-box').classList.remove('show');
+}
+
+</script>
+</body>
+</html>

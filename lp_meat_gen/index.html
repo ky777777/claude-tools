@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>肉の日 LP ジェネレーター</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "ヒラギノ角ゴシック", "Yu Gothic Medium", "Yu Gothic", sans-serif;
+    background: #fbf6f5;
+    color: #222;
+    line-height: 1.7;
+    padding: 28px 32px 60px;
+    font-size: 16px;
+  }
+
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+  .header-row h1 {
+    color: #b3271e;
+    font-size: 28px;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+    margin: 0;
+    padding: 0;
+  }
+
+  h2 {
+    color: #b3271e;
+    font-size: 19px;
+    font-weight: bold;
+    margin: 0 0 14px;
+    padding: 0;
+  }
+
+  .panel {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(179, 39, 30, 0.06);
+    padding: 24px 28px;
+    margin-bottom: 22px;
+  }
+  /* 最初の子の余白を打ち消して、白枠の上下パディングを bottom に揃える */
+  .panel > h2:first-child { margin-top: 0; }
+
+  .field { margin-bottom: 18px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block;
+    font-size: 15px;
+    font-weight: bold;
+    color: #444;
+    margin-bottom: 6px;
+  }
+  .field input,
+  .field textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+    font-family: inherit;
+    line-height: 1.55;
+    background: #fff;
+    color: #222;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field input:focus,
+  .field textarea:focus {
+    outline: none;
+    border-color: #b3271e;
+    box-shadow: 0 0 0 3px rgba(179, 39, 30, 0.12);
+  }
+  .field textarea { resize: vertical; }
+  .field .help {
+    font-size: 13px;
+    color: #888;
+    margin-top: 5px;
+  }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  @media (max-width: 700px) {
+    .row { grid-template-columns: 1fr; }
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .btn {
+    padding: 12px 22px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: bold;
+    font-family: inherit;
+    transition: opacity 0.2s, transform 0.08s, background-color 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.98); }
+
+  /* 20%薄め: 白を20%混色 */
+  .btn-primary   { background: #c2524b; color: #fff; }  /* 元 #b3271e */
+  .btn-secondary { background: #7e858d; color: #fff; }  /* 元 #5e6770 */
+
+  .btn-success   { background: #1f8b4c; color: #fff; }
+  .btn:disabled,
+  .btn-success:disabled {
+    background: #c5c5c5;
+    color: #f4f4f4;
+    cursor: not-allowed;
+    opacity: 1;
+  }
+  .btn:disabled:hover,
+  .btn-success:disabled:hover { opacity: 1; }
+
+  .preview {
+    margin-top: 18px;
+    padding: 0;
+  }
+  .preview-row {
+    display: flex;
+    padding: 8px 0;
+    border-bottom: 1px dotted #ddd;
+    font-size: 15px;
+  }
+  .preview-row:last-child { border-bottom: none; }
+  .preview-row .pkey {
+    width: 160px;
+    color: #777;
+    flex-shrink: 0;
+    font-size: 14px;
+  }
+  .preview-row .pval {
+    flex: 1;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color: #222;
+    word-break: break-all;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2a2a2a;
+    color: #fff;
+    padding: 13px 26px;
+    border-radius: 5px;
+    font-size: 15px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+    z-index: 99;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { background: #b3271e; }
+
+  #templates-data { display: none; }
+</style>
+</head>
+<body>
+  <div class="header-row">
+    <h1>肉の日 LP ジェネレーター</h1>
+    <button class="btn btn-success" id="btn-zip" disabled>ZIPダウンロード</button>
+  </div>
+
+  <div class="panel">
+    <h2>① BL原稿</h2>
+    <div class="field">
+      <textarea id="f-bl" rows="7"></textarea>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-parse">フォームに反映</button>
+      <button class="btn btn-secondary" id="btn-clear">リセット</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>② 解析結果</h2>
+    <div class="row">
+      <div class="field">
+        <label for="f-year">開催年</label>
+        <input type="number" id="f-year" min="2024" max="2099" step="1">
+      </div>
+      <div class="field">
+        <label for="f-start">開始日（M/D）</label>
+        <input type="text" id="f-start">
+      </div>
+      <div class="field">
+        <label for="f-end">終了日（M/D）</label>
+        <input type="text" id="f-end">
+      </div>
+    </div>
+    <div class="field">
+      <label for="f-title">タイトル / og:title</label>
+      <input type="text" id="f-title">
+      <div class="help">20文字以内推奨</div>
+    </div>
+    <div class="field">
+      <label for="f-desc">ディスクリプション / og:description</label>
+      <textarea id="f-desc" rows="2"></textarea>
+      <div class="help">90文字以内推奨</div>
+    </div>
+
+    <div class="preview">
+      <div class="preview-row"><span class="pkey">開催</span><span class="pval" id="p-date">—</span></div>
+      <div class="preview-row"><span class="pkey">data-end</span><span class="pval" id="p-end">—</span></div>
+      <div class="preview-row"><span class="pkey">data-start</span><span class="pval" id="p-start">—</span></div>
+      <div class="preview-row"><span class="pkey">MV画像folder</span><span class="pval" id="p-mv">—</span></div>
+      <div class="preview-row"><span class="pkey">開始前メッセージ</span><span class="pval" id="p-msg">—</span></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="application/json" id="templates-data">[{"key": "3ple", "name": "サンプル百貨店本店", "zip_path": "feature-nikunohi/3ple/nikunohi/index.html", "template": "\u003c!DOCTYPE html>\n\u003chtml lang=\"ja\">\n\u003chead prefix=\"og: https://www.3ple.jp/feature/3ple/nikunohi/ fb: https://www.3ple.jp/feature/3ple/nikunohi/ article: https://www.3ple.jp/feature/3ple/nikunohi/\">\n\t\u003cmeta charset=\"utf-8\">\n\t\u003cmeta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n\t\u003cmeta http-equiv=\"X-UA-Compatible\" content=\"ie=edge\">\n\t\u003ctitle>{{TITLE}}\u003c/title>\n\t\u003cmeta name=\"description\" content=\"{{DESC}}\">\n\t\u003cmeta property=\"og:url\" content=\"https://www.3ple.jp/feature/3ple/nikunohi/\">\n\t\u003cmeta property=\"og:type\" content=\"article\">\n\t\u003cmeta property=\"og:title\" content=\"{{TITLE}}\">\n\t\u003cmeta property=\"og:description\" content=\"{{DESC}}\">\n\t\u003cmeta property=\"og:site_name\" content=\"サンプル百貨店\">\n\t\u003cmeta property=\"og:image\" content=\"https://cdn.3ple.jp/feature/common/img/nikunohi/{{MV_FOLDER}}/1200x630.png\">\n\t\u003clink rel=\"stylesheet\" href=\"./css/style.css\">\n\t\u003clink rel=\"stylesheet\" href=\"../../common/css/nikunohi/style.css\">\n\t\u003c!-- Google Tag Manager -->\n\t\u003cscript>\n\t\t(function(w, d, s, l, i) {\n\t\tw[l] = w[l] || [];\n\t\tw[l].push({\n\t\t\t'gtm.start': new Date().getTime(),\n\t\t\tevent: 'gtm.js'\n\t\t});\n\t\tvar f = d.getElementsByTagName(s)[0],\n\t\t\tj = d.createElement(s),\n\t\t\tdl = l != 'dataLayer' ? '&l=' + l : '';\n\t\tj.async = true;\n\t\tj.src =\n\t\t\t'//www.googletagmanager.com/gtm.js?id=' + i + dl;\n\t\tf.parentNode.insertBefore(j, f);\n\t\t})(window, document, 'script', 'dataLayer', 'GTM-MM2DCG');\n\t\u003c/script>\n\n\t\u003c!-- VWO Async SmartCode -->\n\t\u003clink rel=\"preconnect\" href=\"https://dev.visualwebsiteoptimizer.com\">\n\t\u003cscript type='text/javascript' id='vwoCode'>\n\t\twindow._vwo_code || (function() {\n\t\tvar account_id=714329,\n\t\tversion=2.1,\n\t\tsettings_tolerance=2000,\n\t\thide_element='body',\n\t\thide_element_style = 'opacity:0 !important;filter:alpha(opacity=0) !important;background:none !important;transition:none !important;',\n\t\t/* DO NOT EDIT BELOW THIS LINE */\n\t\tf=false,w=window,d=document,v=d.querySelector('#vwoCode'),cK='_vwo_'+account_id+'_settings',cc={};try{var c=JSON.parse(localStorage.getItem('_vwo_'+account_id+'_config'));cc=c&&typeof c==='object'?c:{}}catch(e){}var stT=cc.stT==='session'?w.sessionStorage:w.localStorage;code={nonce:v&&v.nonce,library_tolerance:function(){return typeof library_tolerance!=='undefined'?library_tolerance:undefined},settings_tolerance:function(){return cc.sT||settings_tolerance},hide_element_style:function(){return'{'+(cc.hES||hide_element_style)+'}'},hide_element:function(){if(performance.getEntriesByName('first-contentful-paint')[0]){return''}return typeof cc.hE==='string'?cc.hE:hide_element},getVersion:function(){return version},finish:function(e){if(!f){f=true;var t=d.getElementById('_vis_opt_path_hides');if(t)t.parentNode.removeChild(t);if(e)(new Image).src='https://dev.visualwebsiteoptimizer.com/ee.gif?a='+account_id+e}},finished:function(){return f},addScript:function(e){var t=d.createElement('script');t.type='text/javascript';if(e.src){t.src=e.src}else{t.text=e.text}v&&t.setAttribute('nonce',v.nonce);d.getElementsByTagName('head')[0].appendChild(t)},load:function(e,t){var n=this.getSettings(),i=d.createElement('script'),r=this;t=t||{};if(n){i.textContent=n;d.getElementsByTagName('head')[0].appendChild(i);if(!w.VWO||VWO.caE){stT.removeItem(cK);r.load(e)}}else{var o=new XMLHttpRequest;o.open('GET',e,true);o.withCredentials=!t.dSC;o.responseType=t.responseType||'text';o.onload=function(){if(t.onloadCb){return t.onloadCb(o,e)}if(o.status===200||o.status===304){_vwo_code.addScript({text:o.responseText})}else{_vwo_code.finish('&e=loading_failure:'+e)}};o.onerror=function(){if(t.onerrorCb){return t.onerrorCb(e)}_vwo_code.finish('&e=loading_failure:'+e)};o.send()}},getSettings:function(){try{var e=stT.getItem(cK);if(!e){return}e=JSON.parse(e);if(Date.now()>e.e){stT.removeItem(cK);return}return e.s}catch(e){return}},init:function(){if(d.URL.indexOf('__vwo_disable__')>-1)return;var e=this.settings_tolerance();w._vwo_settings_timer=setTimeout(function(){_vwo_code.finish();stT.removeItem(cK)},e);var t;if(this.hide_element()!=='body'){t=d.createElement('style');var n=this.hide_element(),i=n?n+this.hide_element_style():'',r=d.getElementsByTagName('head')[0];t.setAttribute('id','_vis_opt_path_hides');v&&t.setAttribute('nonce',v.nonce);t.setAttribute('type','text/css');if(t.styleSheet)t.styleSheet.cssText=i;else t.appendChild(d.createTextNode(i));r.appendChild(t)}else{t=d.getElementsByTagName('head')[0];var i=d.createElement('div');i.style.cssText='z-index: 2147483647 !important;position: fixed !important;left: 0 !important;top: 0 !important;width: 100% !important;height: 100% !important;background: white !important;display: block !important;';i.setAttribute('id','_vis_opt_path_hides');i.classList.add('_vis_hide_layer');t.parentNode.insertBefore(i,t.nextSibling)}var o=window._vis_opt_url||d.URL,s='https://dev.visualwebsiteoptimizer.com/j.php?a='+account_id+'&u='+encodeURIComponent(o)+'&vn='+version;if(w.location.search.indexOf('_vwo_xhr')!==-1){this.addScript({src:s})}else{this.load(s+'&x=true')}}};w._vwo_code=code;code.init();})();\n\t\u003c/script>\n\u003c/head>\n\u003cbody>\n\t\u003c!-- Google Tag Manager (noscript) -->\n\t\u003cnoscript>\u003ciframe src=\"//www.googletagmanager.com/ns.html?id=GTM-MM2DCG\" height=\"0\" width=\"0\" style=\"display:none;visibility:hidden\">\u003c/iframe>\u003c/noscript>\n\n\t\u003cheader class=\"header\">\n\t\t\u003cdiv class=\"header-content\">\n\t\t\u003cdiv class=\"container\">\n\t\t\t\u003cdiv class=\"header-content__body\">\n\t\t\t\t\u003cdiv class=\"header-content__logo\">\n\t\t\t\t\t\u003cdiv class=\"header-content__logo-content\">\n\t\t\t\t\t\t\u003ca class=\"hover\" href=\"https://www.3ple.jp/\">\u003cimg src=\"https://www.3ple.jp/image/head/logo.svg\" alt=\"サンプル百貨店\">\u003c/a>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv class=\"header-content__link\">\n\t\t\t\t\t\u003ca class=\"hover\" href=\"https://www.3ple.jp/\">\u003cspan class=\"icon\">\u003cspan class=\"fas fa-caret-right\">\u003c/span>\u003c/span>\u003cspan>サンプル百貨店TOPへ\u003c/span>\u003c/a>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003c/div>\n\t\u003c/header>\n\t\u003cdiv class=\"date-check js-date-check\" data-end=\"{{DATA_END}}\">\n\t\t\u003cdiv class=\"container\">\u003cp class=\"date-check__text\">\u003cspan class=\"wrap\">{{START_MSG}}\u003c/span>\u003c/p>\u003c/div>\n\t\u003c/div>\n\t\u003cdiv class=\"date-check js-date-check\" data-start=\"{{DATA_START}}\">\n\t\t\u003cdiv class=\"container\">\u003cp class=\"date-check__text\">\u003cspan class=\"wrap\">こちらの特集は終了しました。\u003c/span>\u003cspan class=\"wrap\">次回の開催をお楽しみに！\u003c/span>\u003c/p>\u003c/div>\n\t\u003c/div>\n\t\u003cmain class=\"main\">\n\t\t\u003cdiv class=\"mv-content\">\n\t\t\t\u003ch1 class=\"mv-content_img\">\n\t\t\t\t\u003cspan class=\"mv-content_img_pc\">\u003cimg src=\"../../common/img/nikunohi/{{MV_FOLDER}}/1000x350.png\" alt=\"{{TITLE}}\">\u003c/span>\n\t\t\t\t\u003cspan class=\"mv-content_img_sp\">\u003cimg src=\"../../common/img/nikunohi/{{MV_FOLDER}}/750x350.png\" alt=\"{{TITLE}}\">\u003c/span>\n\t\t\t\u003c/h1>\n\t\t\u003c/div>\n\t\t\u003cdiv class=\"headline-content__navi\">\n\t\t\t\u003cdiv class=\"caution\">人気商品につきましては売切れとなる場合もございます。\u003cspan class=\"splb\">予めご了承ください。\u003c/span>\u003c/div>\n\t\t\t\u003cul class=\"anchor_btn\">\n\t\t\t\t\u003cli>\u003ca href=\"#medama\" class=\"js-smooth hover\">\u003cimg src=\"../../common/img/nikunohi/btn_medama.png\" alt=\"目玉商品\">\u003c/a>\u003c/li>\n\t\t\t\t\u003cli>\u003ca href=\"#ichioshi\" class=\"js-smooth hover\">\u003cimg src=\"../../common/img/nikunohi/btn_ichioshi.png\" alt=\"担当者イチオシ\">\u003c/a>\u003c/li>\n\t\t\t\u003c/ul>\n\t\t\t\u003ch2 class=\"checkered-heading\">\u003cspan class=\"heading-text\">お肉の種類\u003c/span>\u003c/h2>\n\t\t\t\u003cdiv class=\"headline-content__navi_wrap\">\n\t\t\t\t\u003cnav>\n\t\t\t\t\t\u003cul class=\"nav02\">\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#kind01\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>牛肉\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#kind02\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>豚肉\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#kind03\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>鶏肉・馬肉・羊肉\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#kind04\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>その他\u003c/a>\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/nav>\n\t\t\t\u003c/div>\n\t\t\t\u003ch2 class=\"checkered-heading\">\u003cspan class=\"heading-text\">食べ方から探す\u003c/span>\u003c/h2>\n\t\t\t\u003cdiv class=\"headline-content__navi_wrap\">\n\t\t\t\t\u003cnav>\n\t\t\t\t\t\u003cul class=\"nav02\">\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat01\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>焼肉\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat02\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>ステーキ\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat03\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>しゃぶしゃぶ・すき焼き\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat04\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>ハンバーグ\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat05\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>からあげ\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat06\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>ハム・ソーセージ\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat07\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>その他加工品\u003c/a>\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/nav>\n\t\t\t\u003c/div>\n\t\t\t\u003ch2 class=\"checkered-heading\">\u003cspan class=\"heading-text\">価格帯から探す\u003c/span>\u003c/h2>\n\t\t\t\u003cdiv class=\"headline-content__navi_wrap\">\n\t\t\t\t\u003cnav>\n\t\t\t\t\t\u003cul class=\"nav02\">\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#price01\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>～3,000円\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#price02\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>3,001円～5,000円\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#price03\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>5,001円～10,000円\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#price04\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>10,001円～\u003c/a>\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/nav>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003c!-- 目玉商品 -->\n\t\t\u003cdiv id=\"medama\" class=\"separator separator--pickup\">\n\t\t\t\u003cdiv class=\"midashi medama-headline\">\u003cimg src=\"../../common/img/nikunohi/{{MV_FOLDER}}/pickup-head_pc.png\" alt=\"目玉商品\">\u003c/div>\n\t\t\t\u003cdiv class=\"js-tag-to-pickup\" data-root=\"https://www.3ple.jp/\" data-assetroot=\"./\" data-tag=\"niku_1\" data-name=\"1\"  data-limit=\"6\">\u003c/div>\n\t\t\u003c/div>\n\t\t\u003c!-- 担当者いち推し -->\n\t\t\u003cdiv id=\"ichioshi\" class=\"separator separator--pickup\">\n\t\t\t\u003cdiv class=\"midashi ichioshi-headline\">\u003cimg src=\"../../common/img/nikunohi/recommend-head.png\" alt=\"担当者いち推し！\">\u003c/div>\n\t\t\t\u003cdiv class=\"js-tag-to-pickup\" data-root=\"https://www.3ple.jp/\" data-assetroot=\"./\" data-tag=\"niku_2\" data-name=\"2\" data-limit=\"12\">\u003c/div>\n\t\t\u003c/div>\n\t\t\u003cdiv id=\"category\" class=\"separator separator--content-list\">\n\t\t\t\u003cdiv class=\"separator separator--content-list\">\n\t\t\t\t\u003cdiv class=\"pickup-content__head\">\n\t\t\t\t\t\u003cdiv class=\"pickup-content-head\">\n\t\t\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\t\t\u003cdiv class=\"pickup-content-head__head\">\n\t\t\t\t\t\t\t\t\u003ch2>\n\t\t\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag\">\n\t\t\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/search_kind_pc.png\">\n\t\t\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/search_kind_sp.png\">\n\t\t\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/search_kind_pc.png\" alt=\"お肉の種類\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\t\t\u003c/h2>\n\t\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"kind01\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_3\" data-name=\"3\" data-head=\"牛肉\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"kind02\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_4\" data-name=\"4\" data-head=\"豚肉\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"kind03\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_6\" data-name=\"5\" data-head=\"鶏肉・馬肉・羊肉\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"kind04\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_21\" data-name=\"6\" data-head=\"その他\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003c!-- 食べ方から探す -->\n\t\t\u003cdiv id=\"category\" class=\"separator separator--content-list\">\n\t\t\t\u003cdiv class=\"separator separator--content-list\">\n\t\t\t\t\u003cdiv class=\"pickup-content__head\">\n\t\t\t\t\t\u003cdiv class=\"pickup-content-head\">\n\t\t\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\t\t\u003cdiv class=\"pickup-content-head__head\">\n\t\t\t\t\t\t\t\t\u003ch2>\n\t\t\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag\">\n\t\t\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/search_eat_pc.png\">\n\t\t\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/search_eat_sp.png 1x,./img/260129/search_eat_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/search_eat_pc.png\" alt=\"食べ方から探す\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\t\t\u003c/h2>\n\t\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat01\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_10\" data-name=\"3\" data-head=\"焼肉\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat02\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_11\" data-name=\"4\" data-head=\"ステーキ\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat03\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_12\" data-name=\"5\" data-head=\"しゃぶしゃぶ・すき焼き\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat04\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_13\" data-name=\"6\" data-head=\"ハンバーグ\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003cdiv id=\"eat05\" class=\"separator separator--content\">\n\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_14\" data-name=\"7\" data-head=\"からあげ\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat06\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_15\" data-name=\"8\" data-head=\"ハム・ソーセージ\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat07\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_16\" data-name=\"9\" data-head=\"その他加工品\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003c!-- お肉の種類 -->\n\t\t\u003c!-- 価格帯から探す -->\n\t\t\u003cdiv id=\"category\" class=\"separator separator--content-list\">\n\t\t\t\u003cdiv class=\"separator separator--content-list\">\n\t\t\t\t\u003cdiv class=\"pickup-content__head\">\n\t\t\t\t\t\u003cdiv class=\"pickup-content-head\">\n\t\t\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\t\t\u003cdiv class=\"pickup-content-head__head\">\n\t\t\t\t\t\t\t\t\u003ch2>\n\t\t\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag\">\n\t\t\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/search_price_pc.png\">\n\t\t\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/search_price_sp.png 1x,./img/260129/search_price_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/search_price_pc.png\" alt=\"価格帯から選ぶ\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\t\t\u003c/h2>\n\t\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"price01\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_17\" data-name=\"3\" data-head=\"～3,000円\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"price02\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_18\" data-name=\"4\" data-head=\"3,001円～5,000円\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"price03\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_19\" data-name=\"5\" data-head=\"5,001円～10,000円\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"price04\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://www.3ple.jp/\" data-tag=\"niku_20\" data-name=\"6\" data-head=\"10,001円～\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003cdiv class=\"edible_portion\">\n\t\t\t\u003cdiv class=\"edible_portion_beef\">\n\t\t\t\t\u003cdiv class=\"edible_portion_wrap\">\n\t\t\t\t\t\u003cdiv class=\"illstarea\">\n\t\t\t\t\t\t\u003ch2>牛肉可食部位図\u003c/h2>\n\t\t\t\t\t\t\u003cdiv class=\"drawing\">\n\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag js-lazy-img\">\n\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/beef_pc.png\">\n\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/beef_sp.png 1x,./img/260129/beef_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/beef_pc.png\" alt=\"食べ方から探す\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003cul class=\"edible_portion_txt\">\n\t\t\t\t\t\t\u003cli>\u003cspan>❶ かた\u003c/span>よく運動する部位のため、肉質はやや硬め。煮込み料理などに。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❷ かたロース\u003c/span>適度に脂肪がのっており、薄切り肉にして幅広い料理に利用可能。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❸ リブロース\u003c/span>最も霜降りの多い部位。すきやきやステーキなど、肉そのものを味わう肉料理に。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❹ サーロイン\u003c/span>ステーキといえば「サーロインステーキ」と連想する代表的な部位。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❺ ヒレ\u003c/span>柔らかく脂肪分が少ない。牛の部位の中で最も運動しない部位のため、柔らかい肉質。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❻ ばら\u003c/span>前足に近い「かたばら」と、後足に近い「ともばら」の2カ所からなる部位。どちらも濃厚な風味があり、薄切りにして、牛丼や焼き肉用に最適。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❼ もも\u003c/span>肉質は赤身の肉で、カレーやシチューなどの煮込み料理に。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❽ そともも\u003c/span>ももよりは固い部位なので、挽肉にしたり、煮込み料理に。\u003c/li>\n\t\t\t\t\t\t\u003cli class=\"last\">\u003cspan>❾ らんぷ\u003c/span>肉のきめが細かく、非常に質のよい赤身肉。脂肪分が少なくステーキ料理にぴったり。\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\t\u003cdiv class=\"edible_portion_pork\">\n\t\t\t\t\u003cdiv class=\"edible_portion_wrap\">\n\t\t\t\t\t\u003cdiv class=\"illstarea\">\n\t\t\t\t\t\t\u003ch2>豚肉可食部位図\u003c/h2>\n\t\t\t\t\t\t\u003cdiv class=\"drawing\">\n\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag js-lazy-img\">\n\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/pork_pc.png\">\n\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/pork_sp.png 1x,./img/260129/pork_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/pork_pc.png\" alt=\"食べ方から探す\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003cul class=\"edible_portion_txt\">\n\t\t\t\t\t\t\u003cli>\u003cspan>❶ かた\u003c/span>運動する部位なので赤身の多い部分。煮込料理にぴったり。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❷ かたロース\u003c/span>ロース特有の肉のきめ細かさに加え、豚肉特有のコクがある。ソテーや焼き肉などに。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❸ ロース\u003c/span>肉のきめが細かく柔らかい部位。トンカツやポークソテーのような料理に。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❹ ヒレ\u003c/span>標準的な豚から、1kgしか取れない貴重な部位。トンカツに使用される代表的な部位。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❺ ばら\u003c/span>肉質は柔らかく、脂肪と筋肉が層をなしているのがよい部位。代表的な料理は、「角煮」や「焼き豚」などの煮込み料理や、薄切りにして炒め物などに。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❻ もも\u003c/span>赤身の代表的な部位。どんな豚肉料理にも使える。\u003c/li>\n\t\t\t\t\t\t\u003cli class=\"last\">\u003cspan>❼ そともも\u003c/span>赤身肉で味はあっさり。ももと同様、幅広い料理に使用できる。\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003cdiv class=\"reference_link\">参考：東京都中央卸売市場\u003cbr>\u003ca href=\"https://www.shijou.metro.tokyo.lg.jp/about/syokuniku/kisotisiki/kisotisiki-01-03\">https://www.shijou.metro.tokyo.lg.jp/about/syokuniku/kisotisiki/kisotisiki-01-03\u003c/a>\u003c/div>\n\t\t\u003cdiv class=\"separator\">\n\t\t\t\u003cdiv class=\"separator separator--banner-item\">\n\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\u003cdiv class=\"btn-container\">\n\t\t\t\t\t\t\u003ca class=\"btn-container__btn hover\" href=\"https://www.3ple.jp/pay4ship/fresh/1/\">\n\t\t\t\t\t\t\t\u003cpicture>\n\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/bottom-banner_pc.png\">\n\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/bottom-banner_sp.png 1x, ./img/bottom-banner_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\u003cimg src=\"./img/bottom-banner_pc.png\" alt=\"ちょっプルお肉売り場へ\">\n\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\u003c/a>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\n\t\t\t\u003cdiv class=\"separator separator--banner-item\">\n\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\u003cdiv class=\"btn-container\">\n\t\t\t\t\t\t\u003ca class=\"btn-container__btn hover\" href=\"https://www.3ple.jp/feature/3ple/story/shizuokameat/?from=niku202305_banner\">\n\t\t\t\t\t\t\t\u003cimg src=\"https://cdn.3ple.jp/bnr/3ple-link-frame/lp/story/shizuokameat/580x90.png\" alt=\"ハンバーグ王国・静岡の逸品「溢れる肉汁・そのまんま肉バーグ」と、肉の卸問屋アオノの商品ご紹介ページはこちら\">\n\t\t\t\t\t\t\u003c/a>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003cdiv class=\"pagetop-holder js-follow-holder\">\n\t\t\t\u003cdiv class=\"pagetop-container\">\n\t\t\t\t\u003cdiv class=\"container container--0pad\">\n\t\t\t\t\t\u003cbutton class=\"js-pagetop hover pagetop\">\n\t\t\t\t\t\t\u003cpicture class=\"js-lazy-img\">\n\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"img/pagetop_pc.png\">\n\t\t\t\t\t\t\u003csource srcset=\"img/pagetop_sp.png 1x, img/pagetop_sp2x.png 2x\">\u003cimg src=\"img/pagetop_pc.png\" alt=\"TOPへ\">\n\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\u003c/button>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\u003c/main>\n\t\u003cfooter class=\"footer\">\n\t\t\u003cdiv class=\"footer-copy-wrapper\">\n\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\u003cdiv class=\"footer-copy\">\n\t\t\t\t\t\u003cp class=\"footer-copy__img\">\n\t\t\t\t\t\t\u003cpicture class=\"js-lazy-img\">\n\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/p-mark_pc.png\">\n\t\t\t\t\t\t\t\u003csource srcset=\"./img/p-mark_sp.png 1x, ./img/p-mark_sp2x.png 2x\">\n\t\t\t\t\t\t\t\u003cimg src=\"./img/p-mark_pc.png\" alt=\"プライバシーマーク\">\n\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\u003c/p>\n\t\t\t\t\t\u003cp class=\"footer-copy__text\">(c) 2006- All About Life Marketing, Inc.\u003c/p>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\u003c/footer>\n\t\u003cscript src=\"https://cdnjs.cloudflare.com/ajax/libs/picturefill/3.0.3/picturefill.js\">\u003c/script>\n\t\u003cscript src=\"https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js\">\u003c/script>\n\t\u003cscript src=\"./js/script.js\">\u003c/script>\u003c!-- ページ固有Script-->\n\t\u003cscript src=\"https://cdn.3ple.jp/3ple/parts/tag-to-content/js/script.js\">\u003c/script>\n\t\u003clink rel=\"stylesheet\" href=\"https://use.fontawesome.com/releases/v5.6.3/css/all.css\" integrity=\"sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/\" crossorigin=\"anonymous\">\n\t\u003cscript type=\"text/javascript\" src=\"https://cdn.3ple.jp/3ple-static/3ple/pro/js/common/lib/popup/script.js\">\u003c/script>\n\u003c/body>\n\u003c/html>"}, {"key": "docomo", "name": "dショッピング", "zip_path": "feature-nikunohi/docomo/nikunohi/index.html", "template": "\u003c!DOCTYPE html>\n\u003chtml lang=\"ja\">\n\u003chead prefix=\"og: https://dshopping-3ple.docomo.ne.jp/feature/docomo/nikunohi/ fb: https://dshopping-3ple.docomo.ne.jp/feature/docomo/nikunohi/ article: https://dshopping-3ple.docomo.ne.jp/feature/docomo/nikunohi/\">\n\t\u003cmeta charset=\"UTF-8\">\n\t\u003cmeta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n\t\u003cmeta http-equiv=\"X-UA-Compatible\" content=\"ie=edge\">\n\t\u003ctitle>{{TITLE}}\u003c/title>\n\t\u003cmeta name=\"description\" content=\"{{DESC}}\">\n\t\u003cmeta property=\"og:url\" content=\"https://dshopping-3ple.docomo.ne.jp/feature/docomo/nikunohi/\">\n\t\u003cmeta property=\"og:type\" content=\"article\">\n\t\u003cmeta property=\"og:title\" content=\"{{TITLE}}\">\n\t\u003cmeta property=\"og:description\" content=\"{{DESC}}\">\n\t\u003cmeta property=\"og:site_name\" content=\"サンプル百貨店\">\n\t\u003cmeta property=\"og:image\" content=\"https://cdn.3ple.jp/feature/common/img/nikunohi/{{MV_FOLDER}}/1200x630.png\">\n\t\u003clink rel=\"stylesheet\" href=\"./css/style.css\">\n\t\u003clink rel=\"stylesheet\" href=\"../../common/css/nikunohi/style.css\">\n\t\u003c!-- Google Tag Manager -->\n\t\u003cscript>\n\t\t(function(w, d, s, l, i) {\n\t\tw[l] = w[l] || [];\n\t\tw[l].push({\n\t\t\t'gtm.start': new Date().getTime(),\n\t\t\tevent: 'gtm.js'\n\t\t});\n\t\tvar f = d.getElementsByTagName(s)[0],\n\t\t\tj = d.createElement(s),\n\t\t\tdl = l != 'dataLayer' ? '&#038;l=' + l : '';\n\t\tj.async = true;\n\t\tj.src =\n\t\t\t'//www.googletagmanager.com/gtm.js?id=' + i + dl;\n\t\tf.parentNode.insertBefore(j, f);\n\t\t})(window, document, 'script', 'dataLayer', 'GTM-MFGC9J');\n\t\u003c/script>\n\u003c/head>\n\u003cbody>\n\t\u003c!-- Google Tag Manager (noscript) -->\n\t\u003cnoscript>\u003ciframe height=\"0\" src=\"//www.googletagmanager.com/ns.html?id=GTM-MFGC9J\" style=\"display:none;visibility:hidden\" width=\"0\">\u003c/iframe>\u003c/noscript>\n\n\t\u003cheader class=\"header\">\n\t\t\u003cdiv class=\"header-content\">\n\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\u003cdiv class=\"header-content__body\">\n\t\t\t\t\t\u003cdiv class=\"header-content__logo\">\n\t\t\t\t\t\t\u003cdiv class=\"header-content__logo-content header-content__logo-content--d\">\n\t\t\t\t\t\t\t\u003ca class=\"hover\" href=\"https://dshopping.docomo.ne.jp/\" target=\"_blank\" rel=\"noopener\">\n\t\t\t\t\t\t\t\t\u003cpicture class=\"js-lazy-img\">\n\t\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"https://cdn.3ple.jp/3ple-static/d-shop/pro/img/common/logo-d-shopping_pc.png\">\n\t\t\t\t\t\t\t\t\t\u003csource srcset=\"https://cdn.3ple.jp/3ple-static/d-shop/pro/img/common/logo-d-shopping_sp.png 1x, https://cdn.3ple.jp/3ple-static/d-shop/pro/img/common/logo-d-shopping_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\t\u003cimg src=\"https://cdn.3ple.jp/3ple-static/d-shop/pro/img/common/logo-d-shopping_pc.png\" alt=\"dショッピング\">\n\t\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\t\u003c/a>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\t\u003cdiv class=\"header-content__logo-content\">\n\t\t\t\t\t\t\t\u003ca class=\"hover\" href=\"https://dshopping-3ple.docomo.ne.jp/\">\u003cimg src=\"https://www.3ple.jp/image/head/logo.svg\" alt=\"サンプル百貨店\">\u003c/a>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003cdiv class=\"header-content__link\">\n\t\t\t\t\t\t\u003ca class=\"hover\" href=\"https://dshopping-3ple.docomo.ne.jp/\">\u003cspan class=\"icon\">\u003cspan class=\"fas fa-caret-right\">\u003c/span>\u003c/span>\u003cspan>サンプル百貨店TOPへ\u003c/span>\u003c/a>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\u003c/header>\n\t\u003cdiv class=\"date-check js-date-check\" data-end=\"{{DATA_END}}\">\n\t\t\u003cdiv class=\"container\">\n\t\t\t\u003cp class=\"date-check__text\">\u003cspan class=\"wrap\">{{START_MSG}}\u003c/span>\u003c/p>\n\t\t\u003c/div>\n\t\u003c/div>\n\t\u003cdiv class=\"date-check js-date-check\" data-start=\"{{DATA_START}}\">\n\t\t\u003cdiv class=\"container\">\n\t\t\t\u003cp class=\"date-check__text\">\u003cspan class=\"wrap\">こちらの特集は終了しました。\u003c/span>\u003cspan class=\"wrap\">次回の開催をお楽しみに！\u003c/span>\u003c/p>\n\t\t\u003c/div>\n\t\u003c/div>\n\t\u003cmain class=\"main\">\n\t\t\u003cdiv class=\"mv-content\">\n\t\t\t\u003ch1 class=\"mv-content_img\">\n\t\t\t\t\u003cspan class=\"mv-content_img_pc\">\u003cimg src=\"../../common/img/nikunohi/{{MV_FOLDER}}/1000x350.png\" alt=\"{{TITLE}}\">\u003c/span>\n\t\t\t\t\u003cspan class=\"mv-content_img_sp\">\u003cimg src=\"../../common/img/nikunohi/{{MV_FOLDER}}/750x350.png\" alt=\"{{TITLE}}\">\u003c/span>\n\t\t\t\u003c/h1>\n\t\t\u003c/div>\n\t\t\u003cdiv class=\"headline-content__navi\">\n\t\t\t\u003cdiv class=\"caution\">人気商品につきましては売切れとなる場合もございます。\u003cspan class=\"splb\">予めご了承ください。\u003c/span>\u003c/div>\n\t\t\t\u003cul class=\"anchor_btn\">\n\t\t\t\t\u003cli>\u003ca href=\"#medama\" class=\"js-smooth hover\">\u003cimg src=\"../../common/img/nikunohi/btn_medama.png\" alt=\"目玉商品\">\u003c/a>\u003c/li>\n\t\t\t\t\u003cli>\u003ca href=\"#ichioshi\" class=\"js-smooth hover\">\u003cimg src=\"../../common/img/nikunohi/btn_ichioshi.png\" alt=\"担当者イチオシ\">\u003c/a>\u003c/li>\n\t\t\t\u003c/ul>\n\t\t\t\u003ch2 class=\"checkered-heading\">\u003cspan class=\"heading-text\">お肉の種類\u003c/span>\u003c/h2>\n\t\t\t\u003cdiv class=\"headline-content__navi_wrap\">\n\t\t\t\t\u003cnav>\n\t\t\t\t\t\u003cul class=\"nav02\">\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#kind01\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>牛肉\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#kind02\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>豚肉\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#kind03\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>鶏肉・馬肉・羊肉\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#kind04\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>その他\u003c/a>\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/nav>\n\t\t\t\u003c/div>\n\t\t\t\u003ch2 class=\"checkered-heading\">\u003cspan class=\"heading-text\">食べ方から探す\u003c/span>\u003c/h2>\n\t\t\t\u003cdiv class=\"headline-content__navi_wrap\">\n\t\t\t\t\u003cnav>\n\t\t\t\t\t\u003cul class=\"nav02\">\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat01\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>焼肉\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat02\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>ステーキ\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat03\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>しゃぶしゃぶ・すき焼き\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat04\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>ハンバーグ\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat05\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>からあげ\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat06\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>ハム・ソーセージ\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat07\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>その他加工品\u003c/a>\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/nav>\n\t\t\t\u003c/div>\n\t\t\t\u003ch2 class=\"checkered-heading\">\u003cspan class=\"heading-text\">価格帯から探す\u003c/span>\u003c/h2>\n\t\t\t\u003cdiv class=\"headline-content__navi_wrap\">\n\t\t\t\t\u003cnav>\n\t\t\t\t\t\u003cul class=\"nav02\">\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#price01\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>～3,000円\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#price02\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>3,001円～5,000円\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#price03\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>5,001円～10,000円\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#price04\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>10,001円～\u003c/a>\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/nav>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003c!-- 目玉商品 -->\n\t\t\u003cdiv id=\"medama\" class=\"separator separator--pickup\">\n\t\t\t\u003cdiv class=\"midashi medama-headline\">\u003cimg src=\"../../common/img/nikunohi/{{MV_FOLDER}}/pickup-head_pc.png\" alt=\"目玉商品\">\u003c/div>\n\t\t\t\u003cdiv class=\"js-tag-to-pickup\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-assetroot=\"./\" data-tag=\"niku_1\" data-name=\"1\"  data-limit=\"6\">\u003c/div>\n\t\t\u003c/div>\n\t\t\u003c!-- 担当者いち推し -->\n\t\t\u003cdiv id=\"ichioshi\" class=\"separator separator--pickup\">\n\t\t\t\u003cdiv class=\"midashi ichioshi-headline\">\u003cimg src=\"../../common/img/nikunohi/recommend-head.png\" alt=\"担当者いち推し！\">\u003c/div>\n\t\t\t\u003cdiv class=\"js-tag-to-pickup\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-assetroot=\"./\" data-tag=\"niku_2\" data-name=\"2\" data-limit=\"12\">\u003c/div>\n\t\t\u003c/div>\n\t\t\u003c!-- お肉の種類 -->\n\t\t\u003cdiv id=\"category\" class=\"separator separator--content-list\">\n\t\t\t\u003cdiv class=\"separator separator--content-list\">\n\t\t\t\t\u003cdiv class=\"pickup-content__head\">\n\t\t\t\t\t\u003cdiv class=\"pickup-content-head\">\n\t\t\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\t\t\u003cdiv class=\"pickup-content-head__head\">\n\t\t\t\t\t\t\t\t\u003ch2>\n\t\t\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag\">\n\t\t\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/search_kind_pc.png\">\n\t\t\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/search_kind_sp.png 1x,./img/260129/search_kind_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/search_kind_pc.png\" alt=\"お肉の種類\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\t\t\u003c/h2>\n\t\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"kind01\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_3\" data-name=\"3\" data-head=\"牛肉\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"kind02\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_4\" data-name=\"4\" data-head=\"豚肉\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"kind03\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_6\" data-name=\"5\" data-head=\"鶏肉・馬肉・羊肉\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"kind04\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_21\" data-name=\"6\" data-head=\"その他\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003c!-- 食べ方から探す -->\n\t\t\u003cdiv id=\"category\" class=\"separator separator--content-list\">\n\t\t\t\u003cdiv class=\"separator separator--content-list\">\n\t\t\t\t\u003cdiv class=\"pickup-content__head\">\n\t\t\t\t\t\u003cdiv class=\"pickup-content-head\">\n\t\t\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\t\t\u003cdiv class=\"pickup-content-head__head\">\n\t\t\t\t\t\t\t\t\u003ch2>\n\t\t\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag\">\n\t\t\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/search_eat_pc.png\">\n\t\t\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/search_eat_sp.png 1x,./img/260129/search_eat_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/search_eat_pc.png\" alt=\"食べ方から探す\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\t\t\u003c/h2>\n\t\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat01\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_10\" data-name=\"3\" data-head=\"焼肉\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat02\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_11\" data-name=\"4\" data-head=\"ステーキ\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat03\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_12\" data-name=\"5\" data-head=\"しゃぶしゃぶ・すき焼き\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat04\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_13\" data-name=\"6\" data-head=\"ハンバーグ\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat05\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_14\" data-name=\"7\" data-head=\"からあげ\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat06\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_15\" data-name=\"8\" data-head=\"ハム・ソーセージ\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat07\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_16\" data-name=\"9\" data-head=\"その他加工品\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003c!-- 価格帯から探す -->\n\t\t\u003cdiv id=\"category\" class=\"separator separator--content-list\">\n\t\t\t\u003cdiv class=\"separator separator--content-list\">\n\t\t\t\t\u003cdiv class=\"pickup-content__head\">\n\t\t\t\t\t\u003cdiv class=\"pickup-content-head\">\n\t\t\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\t\t\u003cdiv class=\"pickup-content-head__head\">\n\t\t\t\t\t\t\t\t\u003ch2>\n\t\t\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag\">\n\t\t\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/search_price_pc.png\">\n\t\t\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/search_price_sp.png 1x,./img/260129/search_price_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/search_price_pc.png\" alt=\"価格帯から選ぶ\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\t\t\u003c/h2>\n\t\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"price01\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_17\" data-name=\"3\" data-head=\"～3,000円\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"price02\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_18\" data-name=\"4\" data-head=\"3,001円～5,000円\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"price03\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_19\" data-name=\"5\" data-head=\"5,001円～10,000円\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"price04\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_20\" data-name=\"6\" data-head=\"10,001円～\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\u003c!--\n\t\t\u003cdiv class=\"separator separator--content-list\">\n\t\t\t\u003cdiv class=\"separator separator--content-list\">\n\t\t\t\t\u003cdiv id=\"beef\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_3\" data-name=\"3\" data-head=\"牛肉\" data-catch=\"各地の和牛、取り揃えてます\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"pork\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_4\" data-name=\"4\" data-head=\"豚肉\" data-catch=\"しゃぶしゃぶ、焼肉に\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"chikenhorsemutton\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_6\" data-name=\"5\" data-head=\"鶏肉・馬肉・羊肉\" data-catch=\"焼き鳥、馬刺しなど\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"hamburg\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_7\" data-name=\"6\" data-head=\"ハンバーグ\" data-catch=\"ジューシーな肉汁のうまみ\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"friedchicken\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_8\" data-name=\"7\" data-head=\"からあげ\" data-catch=\"お弁当にもぴったり\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"hamsausage\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_9\" data-name=\"8\" data-head=\"ハム・ソーセージ\" data-catch=\"あると便利な一品\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"etc\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dshopping-3ple.docomo.ne.jp/\" data-tag=\"niku_5\" data-name=\"9\" data-head=\"その他加工品\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n -->\n\t\t\u003cdiv class=\"edible_portion\">\n\t\t\t\u003cdiv class=\"edible_portion_beef\">\n\t\t\t\t\u003cdiv class=\"edible_portion_wrap\">\n\t\t\t\t\t\u003cdiv class=\"illstarea\">\n\t\t\t\t\t\t\u003ch2>牛肉可食部位図\u003c/h2>\n\t\t\t\t\t\t\u003cdiv class=\"drawing\">\n\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag js-lazy-img\">\n\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/beef_pc.png\">\n\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/beef_sp.png 1x,./img/260129/beef_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/beef_pc.png\" alt=\"食べ方から探す\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003cul class=\"edible_portion_txt\">\n\t\t\t\t\t\t\u003cli>\u003cspan>❶ かた\u003c/span>よく運動する部位のため、肉質はやや硬め。煮込み料理などに。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❷ かたロース\u003c/span>適度に脂肪がのっており、薄切り肉にして幅広い料理に利用可能。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❸ リブロース\u003c/span>最も霜降りの多い部位。すきやきやステーキなど、肉そのものを味わう肉料理に。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❹ サーロイン\u003c/span>ステーキといえば「サーロインステーキ」と連想する代表的な部位。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❺ ヒレ\u003c/span>柔らかく脂肪分が少ない。牛の部位の中で最も運動しない部位のため、柔らかい肉質。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❻ ばら\u003c/span>前足に近い「かたばら」と、後足に近い「ともばら」の2カ所からなる部位。どちらも濃厚な風味があり、薄切りにして、牛丼や焼き肉用に最適。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❼ もも\u003c/span>肉質は赤身の肉で、カレーやシチューなどの煮込み料理に。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❽ そともも\u003c/span>ももよりは固い部位なので、挽肉にしたり、煮込み料理に。\u003c/li>\n\t\t\t\t\t\t\u003cli class=\"last\">\u003cspan>❾ らんぷ\u003c/span>肉のきめが細かく、非常に質のよい赤身肉。脂肪分が少なくステーキ料理にぴったり。\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\t\u003cdiv class=\"edible_portion_pork\">\n\t\t\t\t\u003cdiv class=\"edible_portion_wrap\">\n\t\t\t\t\t\u003cdiv class=\"illstarea\">\n\t\t\t\t\t\t\u003ch2>豚肉可食部位図\u003c/h2>\n\t\t\t\t\t\t\u003cdiv class=\"drawing\">\n\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag js-lazy-img\">\n\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/pork_pc.png\">\n\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/pork_sp.png 1x,./img/260129/pork_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/pork_pc.png\" alt=\"食べ方から探す\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003cul class=\"edible_portion_txt\">\n\t\t\t\t\t\t\u003cli>\u003cspan>❶ かた\u003c/span>運動する部位なので赤身の多い部分。煮込料理にぴったり。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❷ かたロース\u003c/span>ロース特有の肉のきめ細かさに加え、豚肉特有のコクがある。ソテーや焼き肉などに。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❸ ロース\u003c/span>肉のきめが細かく柔らかい部位。トンカツやポークソテーのような料理に。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❹ ヒレ\u003c/span>標準的な豚から、1kgしか取れない貴重な部位。トンカツに使用される代表的な部位。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❺ ばら\u003c/span>肉質は柔らかく、脂肪と筋肉が層をなしているのがよい部位。代表的な料理は、「角煮」や「焼き豚」などの煮込み料理や、薄切りにして炒め物などに。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❻ もも\u003c/span>赤身の代表的な部位。どんな豚肉料理にも使える。\u003c/li>\n\t\t\t\t\t\t\u003cli class=\"last\">\u003cspan>❼ そともも\u003c/span>赤身肉で味はあっさり。ももと同様、幅広い料理に使用できる。\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003cdiv class=\"reference_link\">参考：東京都中央卸売市場\u003cbr>\u003ca href=\"https://www.shijou.metro.tokyo.lg.jp/about/syokuniku/kisotisiki/kisotisiki-01-03\">https://www.shijou.metro.tokyo.lg.jp/about/syokuniku/kisotisiki/kisotisiki-01-03\u003c/a>\u003c/div>\n\t\t\u003cdiv class=\"separator dshop\">\n\t\t\t\u003cdiv class=\"separator separator--banner-item\">\n\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\u003cdiv class=\"btn-container\">\n\t\t\t\t\t\t\u003ca class=\"btn-container__btn hover\" href=\"https://dshopping-3ple.docomo.ne.jp/pay4ship/fresh/1/\">\n\t\t\t\t\t\t\t\u003cpicture>\n\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"https://www.3ple.jp/feature/3ple/nikunohi/img/bottom-banner_pc.png\">\n\t\t\t\t\t\t\t\t\u003csource srcset=\"https://www.3ple.jp/feature/3ple/nikunohi/img/bottom-banner_sp.png 1x, https://www.3ple.jp/feature/3ple/nikunohi/img/bottom-banner_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\u003cimg src=\"https://www.3ple.jp/feature/3ple/nikunohi/img/bottom-banner_pc.png\" alt=\"ちょっプルお肉売り場へ\">\n\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\u003c/a>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\u003c!-- d店のみ\n\t\t\t\u003cdiv class=\"separator separator--banner-item\">\n\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\u003cdiv class=\"btn-container\">\u003ca class=\"btn-container__btn hover\" href=\"https://dshopping-3ple.docomo.ne.jp/matome/detail/100000000755/?from=nikulp251219\">\u003cimg src=\"https://www.3ple.jp/feature/3ple/nikunohi/img/251219/dsday_640x100.png\" alt=\"12月19・20日限定！エントリーでdポイント(期間・用途限定)最大40倍 今すぐチェック!!\">\u003c/a>\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n -->\n\t\t\t\u003cdiv class=\"separator separator--banner-item\">\n\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\u003cdiv class=\"btn-container\">\u003ca class=\"btn-container__btn hover\" href=\"https://dshopping-3ple.docomo.ne.jp/feature/docomo/story/shizuokameat/?from=niku202305_banner\">\u003cimg src=\"https://cdn.3ple.jp/bnr/3ple-link-frame/lp/story/shizuokameat/580x90.png\" alt=\"ハンバーグ王国・静岡の逸品「溢れる肉汁・そのまんま肉バーグ」と、肉の卸問屋アオノの商品ご紹介ページはこちら\">\u003c/a>\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003cdiv class=\"pagetop-holder js-follow-holder\">\n\t\t\t\u003cdiv class=\"pagetop-container\">\n\t\t\t\t\u003cdiv class=\"container container--0pad\">\n\t\t\t\t\t\u003cbutton class=\"js-pagetop hover pagetop\">\n\t\t\t\t\t\t\u003cpicture class=\"js-lazy-img\">\n\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"https://www.3ple.jp/feature/3ple/nikunohi/img/pagetop_pc.png\">\n\t\t\t\t\t\t\t\u003csource srcset=\"https://www.3ple.jp/feature/3ple/nikunohi/img/pagetop_sp.png 1x, https://www.3ple.jp/feature/3ple/nikunohi/img/pagetop_sp2x.png 2x\">\n\t\t\t\t\t\t\t\u003cimg src=\"https://www.3ple.jp/feature/3ple/nikunohi/img/pagetop_pc.png\" alt=\"TOPへ\">\n\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\u003c/button>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\u003c/main>\n\t\u003cfooter class=\"footer\">\n\t\t\u003cdiv class=\"footer-copy-wrapper\">\n\t\t\t\u003cdiv class=\"container\">\u003cdiv class=\"footer-copy\">\u003cp class=\"footer-copy__text\">(c) NTT DOCOMO\u003c/p>\u003c/div>\u003c/div>\n\t\t\u003c/div>\n\t\u003c/footer>\n\t\u003cscript src=\"https://cdnjs.cloudflare.com/ajax/libs/picturefill/3.0.3/picturefill.js\">\u003c/script>\n\t\u003cscript src=\"https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js\">\u003c/script>\n\t\u003cscript src=\"https://www.3ple.jp/feature/3ple/nikunohi/js/script.js\">\u003c/script>\u003c!-- ページ固有Script-->\n\t\u003cscript src=\"https://cdn.3ple.jp/3ple/parts/tag-to-content/js/script.js\">\u003c/script>\n\t\u003clink rel=\"stylesheet\" href=\"https://use.fontawesome.com/releases/v5.6.3/css/all.css\" integrity=\"sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/\" crossorigin=\"anonymous\">\n\t\u003cscript type=\"text/javascript\" src=\"https://cdn.3ple.jp/3ple-static/d-shop/pro/js/common/lib/popup/dshp_script.js\">\u003c/script>\n\u003c/body>\n\u003c/html>"}, {"key": "dpay", "name": "d払い", "zip_path": "feature-nikunohi/dpay/nikunohi/index.html", "template": "\u003c!DOCTYPE html>\n\u003chtml lang=\"ja\">\n\u003chead prefix=\"og: https://dpay.3ple.jp/feature/dpay/nikunohi/ fb: https://dpay.3ple.jp/feature/dpay/nikunohi/ article: https://dpay.3ple.jp/feature/dpay/nikunohi/\">\n\t\u003cmeta charset=\"UTF-8\">\n\t\u003cmeta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n\t\u003cmeta http-equiv=\"X-UA-Compatible\" content=\"ie=edge\">\n\t\u003ctitle>{{TITLE}}\u003c/title>\n\t\u003cmeta name=\"description\" content=\"{{DESC}}\">\n\t\u003cmeta property=\"og:url\" content=\"https://dpay.3ple.jp/feature/dpay/nikunohi/\">\n\t\u003cmeta property=\"og:type\" content=\"article\">\n\t\u003cmeta property=\"og:title\" content=\"{{TITLE}}\">\n\t\u003cmeta property=\"og:description\" content=\"{{DESC}}\">\n\t\u003cmeta property=\"og:site_name\" content=\"サンプル百貨店\">\n\t\u003cmeta property=\"og:image\" content=\"https://cdn.3ple.jp/feature/common/img/nikunohi/{{MV_FOLDER}}/1200x630.png\">\n\t\u003clink rel=\"stylesheet\" href=\"./css/style.css\">\n\t\u003clink rel=\"stylesheet\" href=\"../../common/css/nikunohi/style.css\">\n\t\u003c!-- Google Tag Manager -->\n\t\u003cscript>\n\t(function(w, d, s, l, i) {\n\t\tw[l] = w[l] || [];\n\t\tw[l].push({\n\t\t'gtm.start': new Date().getTime(),\n\t\tevent: 'gtm.js'\n\t\t});\n\t\tvar f = d.getElementsByTagName(s)[0],\n\t\tj = d.createElement(s),\n\t\tdl = l != 'dataLayer' ? '&l=' + l : '';\n\t\tj.async = true;\n\t\tj.src =\n\t\t'https://www.googletagmanager.com/gtm.js?id=' + i + dl;\n\t\tf.parentNode.insertBefore(j, f);\n\t})(window, document, 'script', 'dataLayer', 'GTM-TJRGN9T');\n\t\u003c/script>\n\u003c/head>\n\u003cbody>\n\t\u003c!-- Google Tag Manager (noscript) -->\n\t\u003cnoscript>\u003ciframe src=\"https://www.googletagmanager.com/ns.html?id=GTM-TJRGN9T\" height=\"0\" width=\"0\" style=\"display:none;visibility:hidden\">\u003c/iframe>\u003c/noscript>\n\n\t\u003cheader class=\"header\">\n\t\t\u003cdiv class=\"header-content\">\n\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\u003cdiv class=\"header-content__body\">\n\t\t\t\t\t\u003cdiv class=\"header-content__logo\">\n\t\t\t\t\t\t\u003cdiv class=\"header-content__logo-content\">\u003ca class=\"js-redirect-link hover\" href=\"https://dpay.3ple.jp/\">\u003cimg src=\"https://cdn.3ple.jp/3ple-static/dpay/pro/img/common/logo-3ple.svg\" alt=\"サンプル百貨店\">\u003c/a>\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003cdiv class=\"header-content__link\">\u003ca class=\"hover\" href=\"https://dpay.3ple.jp/\">\u003cspan class=\"icon\">\u003cspan class=\"fas fa-caret-right\">\u003c/span>\u003c/span>\u003cspan>サンプル百貨店TOPへ\u003c/span>\u003c/a>\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\u003c/header>\n\t\u003cdiv class=\"date-check js-date-check\" data-end=\"{{DATA_END}}\">\n\t\t\u003cdiv class=\"container\">\n\t\t\t\u003cp class=\"date-check__text\">\u003cspan class=\"wrap\">{{START_MSG}}\u003c/span>\u003c/p>\n\t\t\u003c/div>\n\t\u003c/div>\n\t\u003cdiv class=\"date-check js-date-check\" data-start=\"{{DATA_START}}\">\n\t\t\u003cdiv class=\"container\">\n\t\t\t\u003cp class=\"date-check__text\">\u003cspan class=\"wrap\">こちらの特集は終了しました。\u003c/span>\u003cspan class=\"wrap\">次回の開催をお楽しみに！\u003c/span>\u003c/p>\n\t\t\u003c/div>\n\t\u003c/div>\n\t\u003cmain class=\"main\">\n\t\t\u003cdiv class=\"mv-content\">\n\t\t\t\u003ch1 class=\"mv-content_img\">\n\t\t\t\t\u003cspan class=\"mv-content_img_pc\">\u003cimg src=\"../../common/img/nikunohi/{{MV_FOLDER}}/1000x350.png\" alt=\"{{TITLE}}\">\u003c/span>\n\t\t\t\t\u003cspan class=\"mv-content_img_sp\">\u003cimg src=\"../../common/img/nikunohi/{{MV_FOLDER}}/750x350.png\" alt=\"{{TITLE}}\">\u003c/span>\n\t\t\t\u003c/h1>\n\t\t\u003c/div>\n\t\t\u003cdiv class=\"headline-content__navi\">\n\t\t\t\u003cdiv class=\"caution\">人気商品につきましては売切れとなる場合もございます。\u003cspan class=\"splb\">予めご了承ください。\u003c/span>\u003c/div>\n\t\t\t\u003cul class=\"anchor_btn\">\n\t\t\t\t\u003cli>\u003ca href=\"#medama\" class=\"js-smooth hover\">\u003cimg src=\"../../common/img/nikunohi/btn_medama.png\" alt=\"目玉商品\">\u003c/a>\u003c/li>\n\t\t\t\t\u003cli>\u003ca href=\"#ichioshi\" class=\"js-smooth hover\">\u003cimg src=\"../../common/img/nikunohi/btn_ichioshi.png\" alt=\"担当者イチオシ\">\u003c/a>\u003c/li>\n\t\t\t\u003c/ul>\n\t\t\t\u003ch2 class=\"checkered-heading\">\u003cspan class=\"heading-text\">お肉の種類\u003c/span>\u003c/h2>\n\t\t\t\u003cdiv class=\"headline-content__navi_wrap\">\n\t\t\t\t\u003cnav>\n\t\t\t\t\t\u003cul class=\"nav02\">\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#kind01\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>牛肉\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#kind02\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>豚肉\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#kind03\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>鶏肉・馬肉・羊肉\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#kind04\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>その他\u003c/a>\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/nav>\n\t\t\t\u003c/div>\n\t\t\t\u003ch2 class=\"checkered-heading\">\u003cspan class=\"heading-text\">食べ方から探す\u003c/span>\u003c/h2>\n\t\t\t\u003cdiv class=\"headline-content__navi_wrap\">\n\t\t\t\t\u003cnav>\n\t\t\t\t\t\u003cul class=\"nav02\">\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat01\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>焼肉\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat02\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>ステーキ\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat03\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>しゃぶしゃぶ・すき焼き\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat04\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>ハンバーグ\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat05\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>からあげ\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat06\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>ハム・ソーセージ\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#eat07\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>その他加工品\u003c/a>\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/nav>\n\t\t\t\u003c/div>\n\t\t\t\u003ch2 class=\"checkered-heading\">\u003cspan class=\"heading-text\">価格帯から探す\u003c/span>\u003c/h2>\n\t\t\t\u003cdiv class=\"headline-content__navi_wrap\">\n\t\t\t\t\u003cnav>\n\t\t\t\t\t\u003cul class=\"nav02\">\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#price01\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>～3,000円\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#price02\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>3,001円～5,000円\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#price03\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>5,001円～10,000円\u003c/a>\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003ca href=\"#price04\" class=\"js-smooth hover\">\u003ci class=\"fas fa-chevron-down fa_icon\">\u003c/i>10,001円～\u003c/a>\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/nav>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003c!-- 目玉商品 -->\n\t\t\u003cdiv id=\"medama\" class=\"separator separator--pickup\">\n\t\t\t\u003cdiv class=\"midashi medama-headline\">\u003cimg src=\"../../common/img/nikunohi/{{MV_FOLDER}}/pickup-head_pc.png\" alt=\"目玉商品\">\u003c/div>\n\t\t\t\u003cdiv class=\"js-tag-to-pickup\" data-root=\"https://dpay.3ple.jp/\" data-assetroot=\"./\" data-tag=\"niku_1\" data-name=\"1\"  data-limit=\"6\">\u003c/div>\n\t\t\u003c/div>\n\t\t\u003c!-- 担当者いち推し -->\n\t\t\u003cdiv id=\"ichioshi\" class=\"separator separator--pickup\">\n\t\t\t\u003cdiv class=\"midashi ichioshi-headline\">\u003cimg src=\"../../common/img/nikunohi/recommend-head.png\" alt=\"担当者いち推し！\">\u003c/div>\n\t\t\t\u003cdiv class=\"js-tag-to-pickup\" data-root=\"https://dpay.3ple.jp/\" data-assetroot=\"./\" data-tag=\"niku_2\" data-name=\"2\" data-limit=\"12\">\u003c/div>\n\t\t\u003c/div>\n\t\t\u003c!-- お肉の種類 -->\n\t\t\u003cdiv id=\"category\" class=\"separator separator--content-list\">\n\t\t\t\u003cdiv class=\"separator separator--content-list\">\n\t\t\t\t\u003cdiv class=\"pickup-content__head\">\n\t\t\t\t\t\u003cdiv class=\"pickup-content-head\">\n\t\t\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\t\t\u003cdiv class=\"pickup-content-head__head\">\n\t\t\t\t\t\t\t\t\u003ch2>\n\t\t\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag\">\n\t\t\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/search_kind_pc.png\">\n\t\t\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/search_kind_sp.png 1x,./img/260129/search_kind_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/search_kind_pc.png\" alt=\"お肉の種類\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\t\t\u003c/h2>\n\t\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"kind01\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_3\" data-name=\"3\" data-head=\"牛肉\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"kind02\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_4\" data-name=\"4\" data-head=\"豚肉\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"kind03\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_6\" data-name=\"5\" data-head=\"鶏肉・馬肉・羊肉\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"kind04\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_21\" data-name=\"6\" data-head=\"その他\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003c!-- 食べ方から探す -->\n\t\t\u003cdiv id=\"category\" class=\"separator separator--content-list\">\n\t\t\t\u003cdiv class=\"separator separator--content-list\">\n\t\t\t\t\u003cdiv class=\"pickup-content__head\">\n\t\t\t\t\t\u003cdiv class=\"pickup-content-head\">\n\t\t\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\t\t\u003cdiv class=\"pickup-content-head__head\">\n\t\t\t\t\t\t\t\t\u003ch2>\n\t\t\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag\">\n\t\t\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/search_eat_pc.png\">\n\t\t\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/search_eat_sp.png 1x,./img/260129/search_eat_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/search_eat_pc.png\" alt=\"食べ方から探す\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\t\t\u003c/h2>\n\t\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat01\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_10\" data-name=\"3\" data-head=\"焼肉\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat02\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_11\" data-name=\"4\" data-head=\"ステーキ\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat03\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_12\" data-name=\"5\" data-head=\"しゃぶしゃぶ・すき焼き\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat04\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_13\" data-name=\"6\" data-head=\"ハンバーグ\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat05\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_14\" data-name=\"7\" data-head=\"からあげ\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat06\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_15\" data-name=\"8\" data-head=\"ハム・ソーセージ\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"eat07\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_16\" data-name=\"9\" data-head=\"その他加工品\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\n\t\t\u003c!-- 価格帯から探す -->\n\t\t\u003cdiv id=\"category\" class=\"separator separator--content-list\">\n\t\t\t\u003cdiv class=\"separator separator--content-list\">\n\t\t\t\t\u003cdiv class=\"pickup-content__head\">\n\t\t\t\t\t\u003cdiv class=\"pickup-content-head\">\n\t\t\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\t\t\u003cdiv class=\"pickup-content-head__head\">\n\t\t\t\t\t\t\t\t\u003ch2>\n\t\t\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag\">\n\t\t\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/search_price_pc.png\">\n\t\t\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/search_price_sp.png 1x,./img/260129/search_price_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/search_price_pc.png\" alt=\"価格帯から選ぶ\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\t\t\u003c/h2>\n\t\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"price01\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_17\" data-name=\"3\" data-head=\"～3,000円\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"price02\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_18\" data-name=\"4\" data-head=\"3,001円～5,000円\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"price03\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_19\" data-name=\"5\" data-head=\"5,001円～10,000円\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"price04\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_20\" data-name=\"6\" data-head=\"10,001円～\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\u003c!--\n\t\t\u003cdiv class=\"separator separator--content-list\">\n\t\t\t\u003cdiv class=\"separator separator--content-list\">\n\t\t\t\t\u003cdiv id=\"beef\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_3\" data-name=\"3\" data-head=\"牛肉\" data-catch=\"各地の和牛、取り揃えてます\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"pork\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_4\" data-name=\"4\" data-head=\"豚肉\" data-catch=\"しゃぶしゃぶ、焼肉に\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"chikenhorsemutton\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_6\" data-name=\"5\" data-head=\"鶏肉・馬肉・羊肉\" data-catch=\"焼き鳥、馬刺しなど\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"hamburg\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_7\" data-name=\"6\" data-head=\"ハンバーグ\" data-catch=\"ジューシーな肉汁のうまみ\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"friedchicken\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_8\" data-name=\"7\" data-head=\"からあげ\" data-catch=\"お弁当にもぴったり\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"hamsausage\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_9\" data-name=\"8\" data-head=\"ハム・ソーセージ\" data-catch=\"あると便利な一品\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\t\u003cdiv id=\"etc\" class=\"separator separator--content\">\n\t\t\t\t\t\u003cdiv class=\"js-3ple-tag-to-content\" data-root=\"https://dpay.3ple.jp/\" data-tag=\"niku_5\" data-name=\"9\" data-head=\"その他加工品\">\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n -->\n\t\t\u003cdiv class=\"edible_portion\">\n\t\t\t\u003cdiv class=\"edible_portion_beef\">\n\t\t\t\t\u003cdiv class=\"edible_portion_wrap\">\n\t\t\t\t\t\u003cdiv class=\"illstarea\">\n\t\t\t\t\t\t\u003ch2>牛肉可食部位図\u003c/h2>\n\t\t\t\t\t\t\u003cdiv class=\"drawing\">\n\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag js-lazy-img\">\n\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/beef_pc.png\">\n\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/beef_sp.png 1x,./img/260129/beef_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/beef_pc.png\" alt=\"食べ方から探す\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003cul class=\"edible_portion_txt\">\n\t\t\t\t\t\t\u003cli>\u003cspan>❶ かた\u003c/span>よく運動する部位のため、肉質はやや硬め。煮込み料理などに。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❷ かたロース\u003c/span>適度に脂肪がのっており、薄切り肉にして幅広い料理に利用可能。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❸ リブロース\u003c/span>最も霜降りの多い部位。すきやきやステーキなど、肉そのものを味わう肉料理に。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❹ サーロイン\u003c/span>ステーキといえば「サーロインステーキ」と連想する代表的な部位。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❺ ヒレ\u003c/span>柔らかく脂肪分が少ない。牛の部位の中で最も運動しない部位のため、柔らかい肉質。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❻ ばら\u003c/span>前足に近い「かたばら」と、後足に近い「ともばら」の2カ所からなる部位。どちらも濃厚な風味があり、薄切りにして、牛丼や焼き肉用に最適。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❼ もも\u003c/span>肉質は赤身の肉で、カレーやシチューなどの煮込み料理に。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❽ そともも\u003c/span>ももよりは固い部位なので、挽肉にしたり、煮込み料理に。\u003c/li>\n\t\t\t\t\t\t\u003cli class=\"last\">\u003cspan>❾ らんぷ\u003c/span>肉のきめが細かく、非常に質のよい赤身肉。脂肪分が少なくステーキ料理にぴったり。\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\t\u003cdiv class=\"edible_portion_pork\">\n\t\t\t\t\u003cdiv class=\"edible_portion_wrap\">\n\t\t\t\t\t\u003cdiv class=\"illstarea\">\n\t\t\t\t\t\t\u003ch2>豚肉可食部位図\u003c/h2>\n\t\t\t\t\t\t\u003cdiv class=\"drawing\">\n\t\t\t\t\t\t\t\u003cpicture class=\"picuture-tag js-lazy-img\">\n\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"./img/260129/pork_pc.png\">\n\t\t\t\t\t\t\t\t\u003csource srcset=\"./img/260129/pork_sp.png 1x,./img/260129/pork_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\u003cimg src=\"./img/260129/pork_pc.png\" alt=\"食べ方から探す\" class=\"picuture-tag__img\">\n\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\t\u003cul class=\"edible_portion_txt\">\n\t\t\t\t\t\t\u003cli>\u003cspan>❶ かた\u003c/span>運動する部位なので赤身の多い部分。煮込料理にぴったり。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❷ かたロース\u003c/span>ロース特有の肉のきめ細かさに加え、豚肉特有のコクがある。ソテーや焼き肉などに。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❸ ロース\u003c/span>肉のきめが細かく柔らかい部位。トンカツやポークソテーのような料理に。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❹ ヒレ\u003c/span>標準的な豚から、1kgしか取れない貴重な部位。トンカツに使用される代表的な部位。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❺ ばら\u003c/span>肉質は柔らかく、脂肪と筋肉が層をなしているのがよい部位。代表的な料理は、「角煮」や「焼き豚」などの煮込み料理や、薄切りにして炒め物などに。\u003c/li>\n\t\t\t\t\t\t\u003cli>\u003cspan>❻ もも\u003c/span>赤身の代表的な部位。どんな豚肉料理にも使える。\u003c/li>\n\t\t\t\t\t\t\u003cli class=\"last\">\u003cspan>❼ そともも\u003c/span>赤身肉で味はあっさり。ももと同様、幅広い料理に使用できる。\u003c/li>\n\t\t\t\t\t\u003c/ul>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003cdiv class=\"reference_link\">参考：東京都中央卸売市場\u003cbr>\u003ca href=\"https://www.shijou.metro.tokyo.lg.jp/about/syokuniku/kisotisiki/kisotisiki-01-03\">https://www.shijou.metro.tokyo.lg.jp/about/syokuniku/kisotisiki/kisotisiki-01-03\u003c/a>\u003c/div>\n\t\t\u003cdiv class=\"separator\">\n\t\t\t\u003cdiv class=\"separator separator--banner-item\">\n\t\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\t\u003cdiv class=\"btn-container\">\n\t\t\t\t\t\t\u003ca class=\"btn-container__btn hover\" href=\"https://dpay.3ple.jp/pay4ship/fresh/1/\">\n\t\t\t\t\t\t\t\u003cpicture>\n\t\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"https://www.3ple.jp/feature/3ple/nikunohi/img/bottom-banner_pc.png\">\n\t\t\t\t\t\t\t\t\u003csource srcset=\"https://www.3ple.jp/feature/3ple/nikunohi/img/bottom-banner_sp.png 1x, https://www.3ple.jp/feature/3ple/nikunohi/img/bottom-banner_sp2x.png 2x\">\n\t\t\t\t\t\t\t\t\u003cimg src=\"https://www.3ple.jp/feature/3ple/nikunohi/img/bottom-banner_pc.png\" alt=\"ちょっプルお肉売り場へ\">\n\t\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\t\u003c/a>\n\t\t\t\t\t\u003c/div>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\t\u003cdiv class=\"pagetop-holder js-follow-holder\">\n\t\t\t\u003cdiv class=\"pagetop-container\">\n\t\t\t\t\u003cdiv class=\"container container--0pad\">\n\t\t\t\t\t\u003cbutton class=\"js-pagetop hover pagetop\">\n\t\t\t\t\t\t\u003cpicture class=\"js-lazy-img\">\n\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"https://www.3ple.jp/feature/3ple/nikunohi/img/pagetop_pc.png\">\n\t\t\t\t\t\t\t\u003csource srcset=\"https://www.3ple.jp/feature/3ple/nikunohi/img/pagetop_sp.png 1x, https://www.3ple.jp/feature/3ple/nikunohi/img/pagetop_sp2x.png 2x\">\n\t\t\t\t\t\t\t\u003cimg src=\"https://www.3ple.jp/feature/3ple/nikunohi/img/pagetop_pc.png\" alt=\"TOPへ\">\n\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\u003c/button>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\u003c/main>\n\t\u003cfooter class=\"footer\">\n\t\t\u003cdiv class=\"footer-copy-wrapper\">\n\t\t\t\u003cdiv class=\"container\">\n\t\t\t\t\u003cdiv class=\"footer-copy\">\n\t\t\t\t\t\u003cp class=\"footer-copy__img\">\n\t\t\t\t\t\t\u003cpicture class=\"js-lazy-img\">\n\t\t\t\t\t\t\t\u003csource media=\"(min-width: 1000px)\" srcset=\"https://www.3ple.jp/feature/3ple/nikunohi/img/p-mark_pc.png\">\n\t\t\t\t\t\t\t\u003csource srcset=\"https://www.3ple.jp/feature/3ple/nikunohi/img/p-mark_sp.png 1x, https://www.3ple.jp/feature/3ple/nikunohi/img/p-mark_sp2x.png 2x\">\n\t\t\t\t\t\t\t\u003cimg src=\"https://www.3ple.jp/feature/3ple/nikunohi/img/p-mark_pc.png\" alt=\"プライバシーマーク\">\n\t\t\t\t\t\t\u003c/picture>\n\t\t\t\t\t\u003c/p>\n\t\t\t\t\t\u003cp class=\"footer-copy__text\">(c) 2006- All About Life Marketing, Inc.\u003c/p>\n\t\t\t\t\u003c/div>\n\t\t\t\u003c/div>\n\t\t\u003c/div>\n\t\u003c/footer>\n\t\u003cscript src=\"https://cdnjs.cloudflare.com/ajax/libs/picturefill/3.0.3/picturefill.js\">\u003c/script>\n\t\u003cscript src=\"https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js\">\u003c/script>\n\t\u003cscript src=\"https://www.3ple.jp/feature/3ple/nikunohi/js/script.js\">\u003c/script>\u003c!-- ページ固有Script-->\n\t\u003cscript src=\"https://cdn.3ple.jp/3ple/parts/tag-to-content/js/script.js\">\u003c/script>\n\t\u003clink rel=\"stylesheet\" href=\"https://use.fontawesome.com/releases/v5.6.3/css/all.css\" integrity=\"sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/\" crossorigin=\"anonymous\">\n\u003c/body>\n\u003c/html>"}]</script>
+
+  <script>
+  (function(){
+    'use strict';
+
+    var TEMPLATES = JSON.parse(document.getElementById('templates-data').textContent);
+    var WEEKDAYS = ['日','月','火','水','木','金','土'];
+
+    function pad(n){ return String(n).padStart(2, '0'); }
+    function $(sel){ return document.querySelector(sel); }
+
+    function escAttr(s){
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function parseBL(text){
+      var result = {};
+      var ym = text.match(/登録日\s*(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+      if (ym) result.year = parseInt(ym[1], 10);
+
+      var lines = text.split(/\r?\n/);
+      function findValueAfterLabel(prefix){
+        for (var i = 0; i < lines.length; i++){
+          if (lines[i].trim().indexOf(prefix) === 0){
+            for (var j = i + 1; j < lines.length; j++){
+              var v = lines[j].trim();
+              if (v) return v;
+            }
+          }
+        }
+        return '';
+      }
+
+      result.title = findValueAfterLabel('タイトル（') || findValueAfterLabel('タイトル(');
+      result.desc  = findValueAfterLabel('ディスクリプション（') || findValueAfterLabel('ディスクリプション(');
+
+      var period = findValueAfterLabel('公開日期間');
+      if (period){
+        var mw = period.match(/(\d+)\/(\d+)[^\d]*[～~〜][^\d]*(\d+)\/(\d+)/);
+        if (mw){
+          result.startMonth = parseInt(mw[1], 10);
+          result.startDay   = parseInt(mw[2], 10);
+          result.endMonth   = parseInt(mw[3], 10);
+          result.endDay     = parseInt(mw[4], 10);
+        } else {
+          var m1 = period.match(/(\d+)\/(\d+)/);
+          if (m1){
+            result.startMonth = parseInt(m1[1], 10);
+            result.startDay   = parseInt(m1[2], 10);
+            result.endMonth   = result.startMonth;
+            result.endDay     = result.startDay;
+          }
+        }
+      }
+      return result;
+    }
+
+    function compute(){
+      var year       = parseInt($('#f-year').value, 10) || new Date().getFullYear();
+      var startStr   = $('#f-start').value.trim();
+      var endStr     = $('#f-end').value.trim();
+      var title      = $('#f-title').value;
+      var desc       = $('#f-desc').value;
+
+      var sm = startStr.match(/^(\d+)\s*\/\s*(\d+)/);
+      var em = endStr.match(/^(\d+)\s*\/\s*(\d+)/);
+      if (!sm) return null;
+      var startMonth = parseInt(sm[1], 10);
+      var startDay   = parseInt(sm[2], 10);
+      var endMonth   = em ? parseInt(em[1], 10) : startMonth;
+      var endDay     = em ? parseInt(em[2], 10) : startDay;
+
+      var startDate  = new Date(year, startMonth - 1, startDay);
+      var prevDay    = new Date(year, startMonth - 1, startDay - 1);
+      var endNext    = new Date(year, endMonth - 1, endDay + 1);
+
+      var yy = String(year).slice(-2);
+      var mvFolder = yy + pad(startMonth) + pad(startDay);
+
+      var dataEnd   = prevDay.getFullYear() + '/' + pad(prevDay.getMonth() + 1) + '/' + pad(prevDay.getDate()) + ' 23:59';
+      var dataStart = endNext.getFullYear() + '/' + pad(endNext.getMonth() + 1) + '/' + pad(endNext.getDate()) + ' 00:00';
+
+      var wkChar    = WEEKDAYS[startDate.getDay()];
+      var startMsg  = 'こちらの特集は' + startMonth + '/' + startDay + '(' + wkChar + ')開始です';
+
+      var dateLabel;
+      if (startMonth === endMonth && startDay === endDay){
+        dateLabel = year + '/' + pad(startMonth) + '/' + pad(startDay) + ' (' + wkChar + ')';
+      } else {
+        var wkEnd = WEEKDAYS[(new Date(year, endMonth - 1, endDay)).getDay()];
+        dateLabel = year + '/' + pad(startMonth) + '/' + pad(startDay) + '(' + wkChar + ')' +
+                    ' 〜 ' + pad(endMonth) + '/' + pad(endDay) + '(' + wkEnd + ')';
+      }
+
+      return {
+        year: year, startMonth: startMonth, startDay: startDay,
+        endMonth: endMonth, endDay: endDay,
+        title: title, desc: desc,
+        dataEnd: dataEnd, dataStart: dataStart,
+        mvFolder: mvFolder, startMsg: startMsg,
+        dateLabel: dateLabel
+      };
+    }
+
+    function updateZipButton(v){
+      var btn = document.getElementById('btn-zip');
+      var ok = !!(v && v.title && v.title.trim() && v.desc && v.desc.trim());
+      btn.disabled = !ok;
+    }
+
+    function renderPreview(){
+      var v = compute();
+      if (!v){
+        $('#p-date').textContent = '—';
+        $('#p-end').textContent  = '—';
+        $('#p-start').textContent= '—';
+        $('#p-mv').textContent   = '—';
+        $('#p-msg').textContent  = '—';
+        updateZipButton(null);
+        return null;
+      }
+      $('#p-date').textContent  = v.dateLabel;
+      $('#p-end').textContent   = v.dataEnd;
+      $('#p-start').textContent = v.dataStart;
+      $('#p-mv').textContent    = '../../common/img/nikunohi/' + v.mvFolder + '/';
+      $('#p-msg').textContent   = v.startMsg;
+      updateZipButton(v);
+      return v;
+    }
+
+    function applyToTemplate(tpl, v){
+      var titleEsc = escAttr(v.title);
+      var descEsc  = escAttr(v.desc);
+      var msgEsc   = escAttr(v.startMsg);
+      return tpl
+        .replace(/\{\{TITLE\}\}/g,      titleEsc)
+        .replace(/\{\{DESC\}\}/g,       descEsc)
+        .replace(/\{\{DATA_END\}\}/g,   v.dataEnd)
+        .replace(/\{\{DATA_START\}\}/g, v.dataStart)
+        .replace(/\{\{MV_FOLDER\}\}/g,  v.mvFolder)
+        .replace(/\{\{START_MSG\}\}/g,  msgEsc);
+    }
+
+    // ---------- ZIP（STORE方式） ----------
+    var CRC_TABLE = (function(){
+      var t = new Uint32Array(256);
+      for (var n = 0; n < 256; n++){
+        var c = n;
+        for (var k = 0; k < 8; k++){
+          c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        }
+        t[n] = c >>> 0;
+      }
+      return t;
+    })();
+
+    function crc32(data){
+      var c = 0xFFFFFFFF;
+      for (var i = 0; i < data.length; i++){
+        c = (c >>> 8) ^ CRC_TABLE[(c ^ data[i]) & 0xFF];
+      }
+      return (c ^ 0xFFFFFFFF) >>> 0;
+    }
+    function dosTime(d){
+      return ((d.getHours() & 0x1F) << 11) |
+             ((d.getMinutes() & 0x3F) << 5) |
+             ((d.getSeconds() >>> 1) & 0x1F);
+    }
+    function dosDate(d){
+      return (((d.getFullYear() - 1980) & 0x7F) << 9) |
+             (((d.getMonth() + 1) & 0x0F) << 5) |
+             (d.getDate() & 0x1F);
+    }
+    function buildZip(files){
+      var enc = new TextEncoder();
+      var now = new Date();
+      var dt = dosTime(now);
+      var dd = dosDate(now);
+
+      var localChunks = [];
+      var centralChunks = [];
+      var offset = 0;
+
+      for (var idx = 0; idx < files.length; idx++){
+        var file = files[idx];
+        var nameBytes = enc.encode(file.name);
+        var dataBytes = enc.encode(file.content);
+        var crc = crc32(dataBytes);
+        var size = dataBytes.length;
+
+        var local = new Uint8Array(30 + nameBytes.length);
+        var dv = new DataView(local.buffer);
+        dv.setUint32(0,  0x04034b50, true);
+        dv.setUint16(4,  20,         true);
+        dv.setUint16(6,  0x0800,     true);
+        dv.setUint16(8,  0,          true);
+        dv.setUint16(10, dt,         true);
+        dv.setUint16(12, dd,         true);
+        dv.setUint32(14, crc,        true);
+        dv.setUint32(18, size,       true);
+        dv.setUint32(22, size,       true);
+        dv.setUint16(26, nameBytes.length, true);
+        dv.setUint16(28, 0,          true);
+        local.set(nameBytes, 30);
+        localChunks.push(local);
+        localChunks.push(dataBytes);
+
+        var central = new Uint8Array(46 + nameBytes.length);
+        var cdv = new DataView(central.buffer);
+        cdv.setUint32(0,  0x02014b50, true);
+        cdv.setUint16(4,  20,         true);
+        cdv.setUint16(6,  20,         true);
+        cdv.setUint16(8,  0x0800,     true);
+        cdv.setUint16(10, 0,          true);
+        cdv.setUint16(12, dt,         true);
+        cdv.setUint16(14, dd,         true);
+        cdv.setUint32(16, crc,        true);
+        cdv.setUint32(20, size,       true);
+        cdv.setUint32(24, size,       true);
+        cdv.setUint16(28, nameBytes.length, true);
+        cdv.setUint16(30, 0,          true);
+        cdv.setUint16(32, 0,          true);
+        cdv.setUint16(34, 0,          true);
+        cdv.setUint16(36, 0,          true);
+        cdv.setUint32(38, 0,          true);
+        cdv.setUint32(42, offset,     true);
+        central.set(nameBytes, 46);
+        centralChunks.push(central);
+
+        offset += local.length + dataBytes.length;
+      }
+
+      var cdOffset = offset;
+      var cdSize = centralChunks.reduce(function(a, b){ return a + b.length; }, 0);
+
+      var eocd = new Uint8Array(22);
+      var edv = new DataView(eocd.buffer);
+      edv.setUint32(0,  0x06054b50,    true);
+      edv.setUint16(4,  0,             true);
+      edv.setUint16(6,  0,             true);
+      edv.setUint16(8,  files.length,  true);
+      edv.setUint16(10, files.length,  true);
+      edv.setUint32(12, cdSize,        true);
+      edv.setUint32(16, cdOffset,      true);
+      edv.setUint16(20, 0,             true);
+
+      var totalSize = offset + cdSize + 22;
+      var result = new Uint8Array(totalSize);
+      var pos = 0;
+      for (var i = 0; i < localChunks.length; i++){
+        result.set(localChunks[i], pos);
+        pos += localChunks[i].length;
+      }
+      for (var j = 0; j < centralChunks.length; j++){
+        result.set(centralChunks[j], pos);
+        pos += centralChunks[j].length;
+      }
+      result.set(eocd, pos);
+      return result;
+    }
+
+    var toastTimer;
+    function toast(msg, isErr){
+      var el = $('#toast');
+      el.textContent = msg;
+      el.classList.toggle('error', !!isErr);
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 2200);
+    }
+
+    document.getElementById('btn-parse').addEventListener('click', function(){
+      var raw = $('#f-bl').value;
+      if (!raw.trim()){
+        toast('原稿が空です', true);
+        return;
+      }
+      var p = parseBL(raw);
+      var hits = [];
+      if (p.year)       { $('#f-year').value  = p.year;  hits.push('年'); }
+      if (p.startMonth) { $('#f-start').value = p.startMonth + '/' + p.startDay; hits.push('開始日'); }
+      if (p.endMonth)   { $('#f-end').value   = p.endMonth + '/' + p.endDay;     hits.push('終了日'); }
+      if (p.title)      { $('#f-title').value = p.title; hits.push('タイトル'); }
+      if (p.desc)       { $('#f-desc').value  = p.desc;  hits.push('ディスクリプション'); }
+
+      renderPreview();
+      toast('解析完了：' + (hits.length ? hits.join('・') : '何も抽出できませんでした'), hits.length === 0);
+    });
+
+    document.getElementById('btn-clear').addEventListener('click', function(){
+      $('#f-bl').value    = '';
+      $('#f-year').value  = '';
+      $('#f-start').value = '';
+      $('#f-end').value   = '';
+      $('#f-title').value = '';
+      $('#f-desc').value  = '';
+      renderPreview();
+      toast('リセットしました');
+    });
+
+    ['f-year','f-start','f-end','f-title','f-desc'].forEach(function(id){
+      document.getElementById(id).addEventListener('input', renderPreview);
+    });
+
+    document.getElementById('btn-zip').addEventListener('click', function(){
+      var v = compute();
+      if (!v || !v.title || !v.desc) return;
+
+      var files = TEMPLATES.map(function(t){
+        return {
+          name: t.key + '/index.html',
+          content: applyToTemplate(t.template, v)
+        };
+      });
+
+      var bytes = buildZip(files);
+      var blob = new Blob([bytes], { type: 'application/zip' });
+      var url  = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'nikunohi-' + v.mvFolder + '.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast('nikunohi-' + v.mvFolder + '.zip を保存しました');
+    });
+
+    renderPreview();
+  })();
+  </script>
+</body>
+</html>
