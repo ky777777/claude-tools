@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSS clamp() ジェネレーター</title>
+<style>
+:root {
+  color-scheme: light;
+  --primary: #2563eb;
+  --primary-bg: #eff6ff;
+  --primary-dark: #1d4ed8;
+  --warn-bg: #fef3c7;
+  --warn-text: #92400e;
+  --info-bg: #e0f2fe;
+  --info-text: #075985;
+  --ok-bg: #ecfdf5;
+  --ok-text: #065f46;
+  --text: #0f172a;
+  --text-mid: #475569;
+  --text-light: #94a3b8;
+  --border: #e2e8f0;
+  --border-soft: #f1f5f9;
+  --bg: #ffffff;
+  --bg-soft: #f8fafc;
+  --bg-card: #ffffff;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg-soft);
+  padding: 24px 16px;
+}
+.container { max-width: 940px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+header h1 { font-size: 24px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
+header p { font-size: 14px; color: var(--text-mid); margin: 0; }
+h2 { font-size: 19px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.005em; }
+.section-sub { font-size: 13.5px; color: var(--text-mid); margin: 0 0 16px; }
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 24px;
+}
+.settings-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 22px; }
+.settings-bar label { font-size: 14px; color: var(--text-mid); font-weight: 500; }
+.settings-note { font-size: 12.5px; color: var(--text-light); margin-left: auto; }
+.input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+.input-grid + .input-grid { margin-top: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 13px; color: var(--text-mid); font-weight: 500; }
+.field label .opt { color: var(--text-light); font-weight: 400; font-size: 12px; margin-left: 4px; }
+input[type="number"], select {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  font-size: 15px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input[type="number"]:focus, select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+}
+input[type="range"] { width: 100%; height: 28px; }
+.out-block { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+.out-label { font-size: 12px; color: var(--text-mid); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+.out-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.out-code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 15.5px;
+  word-break: break-word;
+  color: var(--text);
+  font-weight: 500;
+}
+.copy-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 68px;
+  flex-shrink: 0;
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+.copy-btn:hover { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); }
+.copy-btn.copied { background: var(--ok-bg); border-color: #10b981; color: var(--ok-text); }
+.stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 14px; }
+.stat { background: var(--bg-soft); border: 1px solid var(--border-soft); border-radius: 10px; padding: 12px 16px; }
+.stat-l { font-size: 12px; color: var(--text-mid); margin-bottom: 4px; }
+.stat-v { font-size: 19px; font-weight: 600; font-family: var(--mono); color: var(--text); }
+.formula {
+  background: #fbfcfe;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-top: 16px;
+}
+.formula-title { font-size: 12px; font-weight: 700; color: var(--text-mid); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.formula-body { font-family: var(--mono); font-size: 14px; line-height: 1.85; color: var(--text); }
+.formula-body .step + .step { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+.formula-body .row { display: block; }
+.formula-body .row.formula-eq { color: var(--text); font-weight: 600; }
+.formula-body .row.sub { color: var(--text-mid); padding-left: 14px; }
+.formula-body .row.result { color: var(--primary); font-weight: 700; padding-left: 14px; font-size: 14.5px; }
+.formula-body .row.note { color: var(--text-light); font-size: 12.5px; padding-left: 14px; font-family: inherit; }
+.preview { margin-top: 16px; padding: 18px 20px; background: var(--bg-soft); border: 1px solid var(--border); border-radius: 10px; }
+.preview-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; font-size: 13.5px; color: var(--text-mid); }
+.preview-head strong { color: var(--text); font-family: var(--mono); font-size: 14.5px; font-weight: 700; }
+.visual-track {
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  min-height: 64px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.visual-block {
+  background: linear-gradient(135deg, #60a5fa, #2563eb);
+  height: 40px;
+  border-radius: 4px;
+  transition: width 0.05s;
+  min-width: 4px;
+}
+.visual-ruler { display: flex; justify-content: space-between; margin-top: 6px; padding: 0 12px; font-size: 11px; color: var(--text-light); font-family: var(--mono); }
+.bp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; margin-top: 14px; }
+.bp { background: var(--bg); border: 1px solid var(--border-soft); border-radius: 8px; padding: 10px 12px; }
+.bp-vp { font-size: 11px; color: var(--text-mid); font-weight: 500; }
+.bp-v { font-size: 15px; font-family: var(--mono); font-weight: 600; color: var(--text); }
+.bp.capped-min { background: #fef3c7; border-color: #fde68a; }
+.bp.capped-max { background: #fee2e2; border-color: #fecaca; }
+.bp.capped-min .bp-v { color: #92400e; }
+.bp.capped-max .bp-v { color: #991b1b; }
+.bp-tag { font-size: 10px; padding: 1px 6px; border-radius: 4px; margin-left: 4px; display: inline-block; }
+.bp.capped-min .bp-tag { background: #fde68a; color: #78350f; }
+.bp.capped-max .bp-tag { background: #fecaca; color: #7f1d1d; }
+.chart-card { padding: 18px 20px; }
+.warn { background: var(--warn-bg); color: var(--warn-text); border-radius: 10px; padding: 14px 18px; font-size: 14px; line-height: 1.7; margin-top: 14px; }
+.warn code, .info code { font-family: var(--mono); background: rgba(255,255,255,0.6); padding: 1px 7px; border-radius: 4px; font-weight: 600; }
+.info { background: var(--info-bg); color: var(--info-text); border-radius: 12px; padding: 16px 20px; font-size: 14.5px; line-height: 1.7; }
+.info strong { display: block; margin-bottom: 4px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+<h1>CSS clamp() ジェネレーター</h1>
+<p>滑らかな clamp() と vw単体 (フルード) の両方を計算します。計算式も併記しているので自分でも追えます。</p>
+</header>
+
+<div class="card settings-bar">
+<label for="baseFs">rem 換算ベース</label>
+<select id="baseFs" style="width: auto;">
+<option value="10" selected>10px (62.5%)</option>
+<option value="16">16px (デフォルト)</option>
+<option value="custom">カスタム</option>
+</select>
+<input type="number" id="baseFsCustom" value="16" step="0.5" style="width: 90px; display: none;">
+<span class="settings-note">vw と px の値はベース変更の影響を受けません</span>
+</div>
+
+<section class="card">
+<h2>1. 滑らかな clamp() — 両端をピタッと通す</h2>
+<p class="section-sub">min/max ビューポートの両方で指定値を通る一次関数を作ります。フォントサイズや余白などに。</p>
+
+<div class="input-grid">
+<div class="field"><label>最小値 (px)</label><input type="number" id="minVal" value="16" step="0.5"></div>
+<div class="field"><label>最大値 (px)</label><input type="number" id="maxVal" value="30" step="0.5"></div>
+<div class="field"><label>最小 viewport (px)</label><input type="number" id="minVP" value="320"></div>
+<div class="field"><label>最大 viewport (px)</label><input type="number" id="maxVP" value="767"></div>
+</div>
+
+<div class="out-block">
+<div class="out-label">clamp() 出力 (rem + vw)</div>
+<div class="out-row">
+<div class="out-code" id="outRem">—</div>
+<button class="copy-btn" data-copy="outRem">Copy</button>
+</div>
+</div>
+
+<div class="out-block">
+<div class="out-label">clamp() 出力 (px + vw)</div>
+<div class="out-row">
+<div class="out-code" id="outPx">—</div>
+<button class="copy-btn" data-copy="outPx">Copy</button>
+</div>
+</div>
+
+<div class="stat-grid">
+<div class="stat"><div class="stat-l">傾き (preferred の vw)</div><div class="stat-v" id="slopeOut">—</div></div>
+<div class="stat"><div class="stat-l">切片 (preferred の rem)</div><div class="stat-v" id="interOut">—</div></div>
+</div>
+
+<div class="formula">
+<div class="formula-title">計算式 (現在の値で展開)</div>
+<div class="formula-body" id="clampFormula"></div>
+</div>
+
+<div class="preview">
+<div class="preview-head">
+<span>プレビュー viewport: <strong id="vpSlide">500</strong> px</span>
+<span>計算値: <strong id="actualVal">—</strong></span>
+</div>
+<input type="range" id="vpRange" min="200" max="1920" value="500" step="1">
+<div class="visual-ruler"><span>0</span><span id="rulerMid">—</span><span id="rulerMax">—</span></div>
+<div class="visual-track">
+<div class="visual-block" id="visualBlock"></div>
+</div>
+<div class="bp-grid" id="bpGrid"></div>
+</div>
+
+<div class="chart-card preview">
+<div class="out-label" style="margin-bottom: 10px;">スケールカーブ</div>
+<svg id="chart" viewBox="0 0 680 220" style="width: 100%; height: 220px; display: block;"></svg>
+</div>
+
+<div class="warn" id="vwOnlyAnalysis">—</div>
+</section>
+
+<section class="card">
+<h2>2. vw 単体 — フルード設計</h2>
+<p class="section-sub">カンプの基準幅に対する比率で vw を算出。要素・余白・画像を比例スケールさせたい場合に。</p>
+
+<div class="input-grid">
+<div class="field"><label>値 (px)</label><input type="number" id="vwVal" value="60" step="0.5"></div>
+<div class="field"><label>基準 viewport (px)</label><input type="number" id="vwBase" value="1440"></div>
+</div>
+
+<div class="out-block">
+<div class="out-label">vw 値</div>
+<div class="out-row">
+<div class="out-code" id="outVw">—</div>
+<button class="copy-btn" data-copy="outVw">Copy</button>
+</div>
+</div>
+
+<div class="input-grid">
+<div class="field"><label>最小 (px) <span class="opt">省略可</span></label><input type="number" id="vwMin" placeholder="例: 40" step="0.5"></div>
+<div class="field"><label>最大 (px) <span class="opt">省略可</span></label><input type="number" id="vwMax" placeholder="例: 80" step="0.5"></div>
+</div>
+
+<div class="out-block">
+<div class="out-label">clamp() でラップ (min/max 入力時のみ)</div>
+<div class="out-row">
+<div class="out-code" id="outVwClamp">min/max を入れると表示</div>
+<button class="copy-btn" data-copy="outVwClamp">Copy</button>
+</div>
+</div>
+
+<div class="formula">
+<div class="formula-title">計算式 (現在の値で展開)</div>
+<div class="formula-body" id="vwFormula"></div>
+</div>
+
+<div class="preview">
+<div class="preview-head">
+<span>プレビュー viewport: <strong id="vwVpSlide">1440</strong> px</span>
+<span>計算値: <strong id="vwActual">—</strong></span>
+</div>
+<input type="range" id="vwVpRange" min="200" max="1920" value="1440" step="1">
+<div class="visual-ruler"><span>0</span><span id="vwRulerMid">—</span><span id="vwRulerMax">—</span></div>
+<div class="visual-track">
+<div class="visual-block" id="vwVisualBlock"></div>
+</div>
+<div class="bp-grid" id="vwBpGrid"></div>
+</div>
+</section>
+
+<div class="info">
+<strong>使い分けの目安</strong>
+フォントサイズや余白など「SP↔PCの両端を綺麗に繋ぎたい」要素は <code>1. 滑らかな clamp()</code>、画像・装飾・カンプ通りの比率を維持したい要素は <code>2. vw単体</code>。後者で極端な幅での破綻が気になる場合は min/max を入れて clamp ラップ版を使います。
+</div>
+
+</div>
+
+<script>
+(function() {
+  const $ = id => document.getElementById(id);
+  const minVal = $('minVal'), maxVal = $('maxVal'), minVP = $('minVP'), maxVP = $('maxVP');
+  const outRem = $('outRem'), outPx = $('outPx'), slopeOut = $('slopeOut'), interOut = $('interOut');
+  const vpRange = $('vpRange'), vpSlide = $('vpSlide'), actualVal = $('actualVal');
+  const visualBlock = $('visualBlock'), bpGrid = $('bpGrid');
+  const chart = $('chart'), vwOnlyAnalysis = $('vwOnlyAnalysis');
+  const baseFs = $('baseFs'), baseFsCustom = $('baseFsCustom');
+  const vwVal = $('vwVal'), vwBase = $('vwBase'), outVw = $('outVw');
+  const vwMin = $('vwMin'), vwMax = $('vwMax'), outVwClamp = $('outVwClamp');
+  const vwVpRange = $('vwVpRange'), vwVpSlide = $('vwVpSlide'), vwActual = $('vwActual');
+  const vwVisualBlock = $('vwVisualBlock'), vwBpGrid = $('vwBpGrid');
+  const clampFormula = $('clampFormula'), vwFormula = $('vwFormula');
+  const rulerMid = $('rulerMid'), rulerMax = $('rulerMax'), vwRulerMid = $('vwRulerMid'), vwRulerMax = $('vwRulerMax');
+
+  const BREAKPOINTS = [320, 375, 414, 768, 1024, 1280, 1440];
+  const VISUAL_MAX_PX = 600;
+
+  function getBase() {
+    if (baseFs.value === 'custom') return parseFloat(baseFsCustom.value) || 16;
+    return parseFloat(baseFs.value);
+  }
+
+  function fmt(n, d) {
+    if (!isFinite(n)) return '—';
+    const p = Math.pow(10, d);
+    return (Math.round(n * p) / p).toString();
+  }
+
+  function renderClampFormula(mn, mx, mnVP, mxVP, slope, inter, base) {
+    const slopeVw = slope * 100;
+    const interRem = inter / base;
+    clampFormula.innerHTML =
+      '<div class="step">' +
+        '<div class="row formula-eq">slope = (max − min) ÷ (maxVP − minVP)</div>' +
+        '<div class="row sub">= (' + mx + ' − ' + mn + ') ÷ (' + mxVP + ' − ' + mnVP + ')</div>' +
+        '<div class="row sub">= ' + fmt(mx - mn, 3) + ' ÷ ' + fmt(mxVP - mnVP, 3) + '</div>' +
+        '<div class="row result">→ slope = ' + fmt(slope, 6) + '</div>' +
+      '</div>' +
+      '<div class="step">' +
+        '<div class="row formula-eq">intercept = min − slope × minVP</div>' +
+        '<div class="row sub">= ' + mn + ' − ' + fmt(slope, 6) + ' × ' + mnVP + '</div>' +
+        '<div class="row sub">= ' + mn + ' − ' + fmt(slope * mnVP, 4) + '</div>' +
+        '<div class="row result">→ intercept = ' + fmt(inter, 4) + ' px</div>' +
+      '</div>' +
+      '<div class="step">' +
+        '<div class="row formula-eq">CSS: preferred = intercept + (slope × 100) vw</div>' +
+        '<div class="row sub">= ' + fmt(inter, 4) + 'px + ' + fmt(slopeVw, 4) + 'vw</div>' +
+        '<div class="row note">rem換算 (base ' + base + 'px): ' + fmt(interRem, 4) + 'rem + ' + fmt(slopeVw, 4) + 'vw</div>' +
+      '</div>' +
+      '<div class="step">' +
+        '<div class="row formula-eq">最終: clamp(min, preferred, max)</div>' +
+        '<div class="row result">= clamp(' + mn + 'px, ' + fmt(inter, 3) + 'px + ' + fmt(slopeVw, 3) + 'vw, ' + mx + 'px)</div>' +
+      '</div>';
+  }
+
+  function renderVwFormula(val, refVP, base, mn, mx) {
+    const vw = val / refVP * 100;
+    let str =
+      '<div class="step">' +
+        '<div class="row formula-eq">vw = 値 ÷ 基準viewport × 100</div>' +
+        '<div class="row sub">= ' + val + ' ÷ ' + refVP + ' × 100</div>' +
+        '<div class="row result">→ ' + fmt(vw, 5) + ' vw</div>' +
+      '</div>' +
+      '<div class="step">' +
+        '<div class="row formula-eq">任意viewportでの実値</div>' +
+        '<div class="row sub">実値 = vw ÷ 100 × viewport</div>' +
+        '<div class="row sub">     = ' + fmt(vw, 5) + ' ÷ 100 × viewport</div>' +
+        '<div class="row note">例: viewport=375px → ' + fmt(vw / 100 * 375, 3) + 'px ／ viewport=' + refVP + 'px → ' + fmt(val, 3) + 'px (基準と一致)</div>' +
+      '</div>';
+    if (isFinite(mn) && isFinite(mx)) {
+      str +=
+        '<div class="step">' +
+          '<div class="row formula-eq">clamp() ラップ</div>' +
+          '<div class="row result">= clamp(' + mn + 'px, ' + fmt(vw, 4) + 'vw, ' + mx + 'px)</div>' +
+        '</div>';
+    }
+    vwFormula.innerHTML = str;
+  }
+
+  function renderBreakpoints(grid, calcFn, capLo, capHi) {
+    grid.innerHTML = BREAKPOINTS.map(vp => {
+      const v = calcFn(vp);
+      let cls = '';
+      let tag = '';
+      if (capLo !== null && v <= capLo + 0.001) { cls = 'capped-min'; tag = '<span class="bp-tag">min</span>'; }
+      else if (capHi !== null && v >= capHi - 0.001) { cls = 'capped-max'; tag = '<span class="bp-tag">max</span>'; }
+      return '<div class="bp ' + cls + '"><div class="bp-vp">' + vp + 'px' + tag + '</div><div class="bp-v">' + fmt(v, 2) + 'px</div></div>';
+    }).join('');
+  }
+
+  function calc() {
+    const BASE = getBase();
+    const mn = parseFloat(minVal.value);
+    const mx = parseFloat(maxVal.value);
+    const mnVP = parseFloat(minVP.value);
+    const mxVP = parseFloat(maxVP.value);
+    if (!isFinite(mn) || !isFinite(mx) || !isFinite(mnVP) || !isFinite(mxVP) || mxVP === mnVP) return;
+
+    const slope = (mx - mn) / (mxVP - mnVP);
+    const inter = mn - slope * mnVP;
+    const slopeVw = slope * 100;
+    const interRem = inter / BASE;
+
+    outRem.textContent = 'clamp(' + fmt(mn / BASE, 4) + 'rem, ' + fmt(interRem, 4) + 'rem + ' + fmt(slopeVw, 4) + 'vw, ' + fmt(mx / BASE, 4) + 'rem)';
+    outPx.textContent = 'clamp(' + fmt(mn, 2) + 'px, ' + fmt(inter, 3) + 'px + ' + fmt(slopeVw, 4) + 'vw, ' + fmt(mx, 2) + 'px)';
+    slopeOut.textContent = fmt(slopeVw, 4) + ' vw';
+    interOut.textContent = fmt(interRem, 4) + ' rem';
+
+    renderClampFormula(mn, mx, mnVP, mxVP, slope, inter, BASE);
+
+    const lo = Math.min(mn, mx), hi = Math.max(mn, mx);
+    renderBreakpoints(bpGrid, vp => {
+      let v = inter + slope * vp;
+      return Math.max(lo, Math.min(hi, v));
+    }, lo, hi);
+
+    const minNeeded = mn / mnVP * 100;
+    const maxNeeded = mx / mxVP * 100;
+    if (Math.abs(minNeeded - maxNeeded) < 0.001) {
+      vwOnlyAnalysis.innerHTML = 'vw 単体でも OK: <code>' + fmt(minNeeded, 3) + 'vw</code> なら両端をぴったり通ります。';
+    } else {
+      vwOnlyAnalysis.innerHTML = 'vw 単体だと両端を同時に通せません。min側に合わせるなら <code>' + fmt(minNeeded, 3) + 'vw</code>、max側に合わせるなら <code>' + fmt(maxNeeded, 3) + 'vw</code>。両端を滑らかに繋ぐなら上の <code>rem + vw</code> パターンを使ってください。';
+    }
+
+    rulerMid.textContent = (VISUAL_MAX_PX / 2) + 'px';
+    rulerMax.textContent = VISUAL_MAX_PX + 'px';
+
+    drawChart(mn, mx, mnVP, mxVP, slope, inter);
+    updatePreview();
+  }
+
+  function updatePreview() {
+    const vp = parseFloat(vpRange.value);
+    vpSlide.textContent = vp;
+    const mn = parseFloat(minVal.value);
+    const mx = parseFloat(maxVal.value);
+    const mnVP = parseFloat(minVP.value);
+    const mxVP = parseFloat(maxVP.value);
+    if (!isFinite(mn) || !isFinite(mx) || !isFinite(mnVP) || !isFinite(mxVP)) return;
+    const slope = (mx - mn) / (mxVP - mnVP);
+    const inter = mn - slope * mnVP;
+    let v = inter + slope * vp;
+    const lo = Math.min(mn, mx), hi = Math.max(mn, mx);
+    v = Math.max(lo, Math.min(hi, v));
+    actualVal.textContent = fmt(v, 2) + 'px';
+    visualBlock.style.width = Math.min(v, VISUAL_MAX_PX) + 'px';
+  }
+
+  function calcVw() {
+    const v = parseFloat(vwVal.value);
+    const base = parseFloat(vwBase.value);
+    const BASE = getBase();
+    if (!isFinite(v) || !isFinite(base) || base === 0) {
+      outVw.textContent = '—';
+      outVwClamp.textContent = 'min/max を入れると表示';
+      vwFormula.innerHTML = '<div class="row note">数値を入力してください</div>';
+      return;
+    }
+    const vw = v / base * 100;
+    outVw.textContent = fmt(vw, 4) + 'vw';
+
+    const mn = parseFloat(vwMin.value);
+    const mx = parseFloat(vwMax.value);
+    if (isFinite(mn) && isFinite(mx)) {
+      outVwClamp.textContent = 'clamp(' + fmt(mn, 2) + 'px, ' + fmt(vw, 4) + 'vw, ' + fmt(mx, 2) + 'px)';
+    } else if (isFinite(mn)) {
+      outVwClamp.textContent = 'max(' + fmt(mn, 2) + 'px, ' + fmt(vw, 4) + 'vw)';
+    } else if (isFinite(mx)) {
+      outVwClamp.textContent = 'min(' + fmt(vw, 4) + 'vw, ' + fmt(mx, 2) + 'px)';
+    } else {
+      outVwClamp.textContent = 'min/max を入れると表示';
+    }
+
+    renderVwFormula(v, base, BASE, mn, mx);
+
+    renderBreakpoints(vwBpGrid, vp => {
+      let actual = vw / 100 * vp;
+      if (isFinite(mn)) actual = Math.max(actual, mn);
+      if (isFinite(mx)) actual = Math.min(actual, mx);
+      return actual;
+    }, isFinite(mn) ? mn : null, isFinite(mx) ? mx : null);
+
+    vwRulerMid.textContent = (VISUAL_MAX_PX / 2) + 'px';
+    vwRulerMax.textContent = VISUAL_MAX_PX + 'px';
+
+    updateVwPreview();
+  }
+
+  function updateVwPreview() {
+    const vp = parseFloat(vwVpRange.value);
+    vwVpSlide.textContent = vp;
+    const v = parseFloat(vwVal.value);
+    const base = parseFloat(vwBase.value);
+    if (!isFinite(v) || !isFinite(base) || base === 0) return;
+    let actual = v / base * vp;
+    const mn = parseFloat(vwMin.value);
+    const mx = parseFloat(vwMax.value);
+    if (isFinite(mn)) actual = Math.max(actual, mn);
+    if (isFinite(mx)) actual = Math.min(actual, mx);
+    vwActual.textContent = fmt(actual, 2) + 'px';
+    vwVisualBlock.style.width = Math.min(actual, VISUAL_MAX_PX) + 'px';
+  }
+
+  function drawChart(mn, mx, mnVP, mxVP, slope, inter) {
+    const w = 680, h = 220, padL = 48, padR = 16, padT = 18, padB = 32;
+    const vpMin = 0, vpMax = 1600;
+    const lo = Math.min(mn, mx), hi = Math.max(mn, mx);
+    const range = hi - lo || 1;
+    const valLo = lo - range * 0.25;
+    const valHi = hi + range * 0.25;
+    const xs = vp => padL + (vp - vpMin) / (vpMax - vpMin) * (w - padL - padR);
+    const ys = vv => (h - padB) - (vv - valLo) / (valHi - valLo) * (h - padT - padB);
+    let path = '';
+    for (let vp = vpMin; vp <= vpMax; vp += 8) {
+      let vv;
+      if (vp <= mnVP) vv = mn;
+      else if (vp >= mxVP) vv = mx;
+      else vv = inter + slope * vp;
+      const x = xs(vp), y = ys(vv);
+      path += (path ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+    }
+    let gridLines = '';
+    [320, 768, 1024, 1440].forEach(g => {
+      const x = xs(g);
+      gridLines += '<line x1="' + x + '" y1="' + padT + '" x2="' + x + '" y2="' + (h - padB) + '" stroke="#f1f5f9" stroke-width="1"/>';
+      gridLines += '<text x="' + x + '" y="' + (h - padB + 16) + '" font-size="11" fill="#94a3b8" text-anchor="middle">' + g + '</text>';
+    });
+    chart.innerHTML =
+      gridLines +
+      '<line x1="' + padL + '" y1="' + (h - padB) + '" x2="' + (w - padR) + '" y2="' + (h - padB) + '" stroke="#cbd5e1" stroke-width="1"/>' +
+      '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (h - padB) + '" stroke="#cbd5e1" stroke-width="1"/>' +
+      '<line x1="' + xs(mnVP) + '" y1="' + padT + '" x2="' + xs(mnVP) + '" y2="' + (h - padB) + '" stroke="#94a3b8" stroke-dasharray="3 3" stroke-width="1"/>' +
+      '<line x1="' + xs(mxVP) + '" y1="' + padT + '" x2="' + xs(mxVP) + '" y2="' + (h - padB) + '" stroke="#94a3b8" stroke-dasharray="3 3" stroke-width="1"/>' +
+      '<line x1="' + padL + '" y1="' + ys(mn) + '" x2="' + (w - padR) + '" y2="' + ys(mn) + '" stroke="#cbd5e1" stroke-dasharray="2 4" stroke-width="0.5"/>' +
+      '<line x1="' + padL + '" y1="' + ys(mx) + '" x2="' + (w - padR) + '" y2="' + ys(mx) + '" stroke="#cbd5e1" stroke-dasharray="2 4" stroke-width="0.5"/>' +
+      '<path d="' + path + '" fill="none" stroke="#2563eb" stroke-width="2.5"/>' +
+      '<circle cx="' + xs(mnVP) + '" cy="' + ys(mn) + '" r="4.5" fill="#2563eb"/>' +
+      '<circle cx="' + xs(mxVP) + '" cy="' + ys(mx) + '" r="4.5" fill="#2563eb"/>' +
+      '<text x="' + xs(mnVP) + '" y="' + (padT + 12) + '" font-size="11" fill="#475569" text-anchor="middle" font-weight="600">' + mnVP + '</text>' +
+      '<text x="' + xs(mxVP) + '" y="' + (padT + 12) + '" font-size="11" fill="#475569" text-anchor="middle" font-weight="600">' + mxVP + '</text>' +
+      '<text x="' + (padL - 8) + '" y="' + (ys(mn) + 4) + '" font-size="11" fill="#475569" text-anchor="end" font-weight="600">' + mn + '</text>' +
+      '<text x="' + (padL - 8) + '" y="' + (ys(mx) + 4) + '" font-size="11" fill="#475569" text-anchor="end" font-weight="600">' + mx + '</text>' +
+      '<text x="' + ((w + padL) / 2) + '" y="' + (h - 6) + '" font-size="11" fill="#94a3b8" text-anchor="middle">viewport (px)</text>';
+  }
+
+  baseFs.addEventListener('change', () => {
+    baseFsCustom.style.display = baseFs.value === 'custom' ? '' : 'none';
+    calc();
+    calcVw();
+  });
+  baseFsCustom.addEventListener('input', () => { calc(); calcVw(); });
+  [minVal, maxVal, minVP, maxVP].forEach(el => el.addEventListener('input', calc));
+  vpRange.addEventListener('input', updatePreview);
+  [vwVal, vwBase, vwMin, vwMax].forEach(el => el.addEventListener('input', calcVw));
+  vwVpRange.addEventListener('input', updateVwPreview);
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '-9999px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    const selected = document.getSelection().rangeCount > 0 ? document.getSelection().getRangeAt(0) : null;
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    if (selected) {
+      document.getSelection().removeAllRanges();
+      document.getSelection().addRange(selected);
+    }
+    return ok;
+  }
+
+  function copyText(text) {
+    return new Promise((resolve) => {
+      if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+          .then(() => resolve(true))
+          .catch(() => resolve(fallbackCopy(text)));
+      } else {
+        resolve(fallbackCopy(text));
+      }
+    });
+  }
+
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.copy;
+      const text = document.getElementById(id).textContent;
+      const orig = btn.textContent;
+      copyText(text).then((ok) => {
+        if (ok) {
+          btn.classList.add('copied');
+          btn.textContent = 'Copied';
+        } else {
+          btn.textContent = '失敗';
+          btn.style.borderColor = '#ef4444';
+          btn.style.color = '#b91c1c';
+        }
+        setTimeout(() => {
+          btn.textContent = orig;
+          btn.classList.remove('copied');
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 1400);
+      });
+    });
+  });
+
+  calc();
+  calcVw();
+})();
+</script>
+</body>
+</html>
