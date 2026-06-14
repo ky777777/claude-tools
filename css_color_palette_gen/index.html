@@ -56,7 +56,7 @@
 		display: flex;
 		gap: 16px;
 		flex-wrap: wrap;
-		margin-bottom: 28px;
+		margin-bottom: 16px;
 		background: var(--card);
 		padding: 20px;
 		border-radius: 10px;
@@ -79,7 +79,7 @@
 		border-radius: 6px;
 		font-family: ui-monospace, "SF Mono", Menlo, monospace;
 		font-size: 14px;
-		min-width: 140px;
+		min-width: 160px;
 		background: #fff;
 	}
 	.field input[type=text]:focus {
@@ -96,13 +96,47 @@
 		background: #fff;
 	}
 
+	/* actions */
+	.actions {
+		display: flex;
+		gap: 8px;
+		margin-bottom: 28px;
+	}
+	.btn {
+		background: var(--accent);
+		color: #fff;
+		border: 0;
+		padding: 10px 22px;
+		border-radius: 6px;
+		font-size: 13px;
+		font-weight: 600;
+		cursor: pointer;
+		font-family: inherit;
+		transition: opacity 0.15s, transform 0.1s;
+	}
+	.btn:hover { opacity: 0.9; }
+	.btn:active { transform: scale(0.97); }
+	.btn--secondary {
+		background: #fff;
+		color: var(--text);
+		border: 1px solid var(--border);
+		font-weight: 500;
+	}
+	.btn--secondary:hover { background: #f0f0f0; opacity: 1; }
+	.btn--small {
+		padding: 6px 14px;
+		font-size: 12px;
+	}
+
 	/* palette */
 	.palette {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
 		gap: 8px;
 		margin-bottom: 28px;
+		min-height: 8px;
 	}
+	.palette:empty { display: none; }
 	.swatch {
 		background: var(--card);
 		border: 1px solid var(--border);
@@ -158,19 +192,14 @@
 		color: var(--code-fg);
 		overflow-x: auto;
 		white-space: pre;
+		tab-size: 4;
+		-moz-tab-size: 4;
 	}
-	button {
-		background: var(--accent);
-		color: #fff;
-		border: 0;
-		padding: 6px 14px;
-		border-radius: 5px;
-		font-size: 12px;
-		cursor: pointer;
-		font-family: inherit;
+	.output pre:empty::before {
+		content: "(クリアされました)";
+		color: var(--muted);
+		font-style: italic;
 	}
-	button:hover { opacity: 0.88; }
-	button:active { transform: scale(0.97); }
 
 	.toast {
 		position: fixed;
@@ -200,13 +229,14 @@
 
 <div class="note">
 	内部処理は <code>mix(base, #fff, weight%)</code> 相当。Sass の <code>lighten()</code> と違い色味は変わりません。
-	スウォッチをクリックすると単体の hex を、右上のボタンで SCSS ブロック全体をコピーできます。
+	HEX は <code>#</code> 無し(<code>ff99ad</code>)でもOK。スウォッチをクリックすると単体の hex を、右上のボタンで SCSS ブロック全体をコピーできます。
 </div>
 
 <div class="inputs">
 	<div class="field">
 		<label for="name">変数名 suffix</label>
 		<input type="text" id="name" value="gray" autocomplete="off">
+		<small id="name-hint" style="color:#f0b400;font-size:11px;display:none;"></small>
 	</div>
 	<div class="field">
 		<label for="picker">ベース色</label>
@@ -214,8 +244,13 @@
 	</div>
 	<div class="field">
 		<label for="hex">HEX</label>
-		<input type="text" id="hex" value="#222222" autocomplete="off">
+		<input type="text" id="hex" value="#222222" autocomplete="off" placeholder="#000000 or 000000">
 	</div>
+</div>
+
+<div class="actions">
+	<button id="generate" class="btn">生成</button>
+	<button id="clear" class="btn btn--secondary">クリア</button>
 </div>
 
 <div class="palette" id="palette"></div>
@@ -223,7 +258,7 @@
 <div class="output">
 	<div class="output__head">
 		<span>SCSS</span>
-		<button id="copy-all">SCSS をコピー</button>
+		<button id="copy-all" class="btn btn--small">コピー</button>
 	</div>
 	<pre id="scss"></pre>
 </div>
@@ -232,6 +267,7 @@
 
 <script>
 	const STEPS = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 5, 3, 0];
+	const TAB_WIDTH = 4;
 
 	function hexToRgb(hex) {
 		return [hex.slice(1, 3), hex.slice(3, 5), hex.slice(5, 7)].map(s => parseInt(s, 16));
@@ -239,7 +275,6 @@
 	function rgbToHex(r, g, b) {
 		return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
 	}
-	// mix(base, #fff, weight%)  weight = base が残る割合
 	function mixWithWhite(hex, weight) {
 		const [r, g, b] = hexToRgb(hex);
 		const w = weight / 100;
@@ -250,16 +285,37 @@
 		);
 	}
 
-	function isValidHex(s) {
-		return /^#[0-9a-f]{6}$/i.test(s);
+	// "#000000" / "000000" / "FF99AD" を受け付けて #ff99ad に正規化
+	function normalizeHex(s) {
+		s = (s || '').trim().toLowerCase();
+		if (s.startsWith('#')) s = s.slice(1);
+		return /^[0-9a-f]{6}$/.test(s) ? '#' + s : null;
 	}
 
-	const $name   = document.getElementById('name');
-	const $picker = document.getElementById('picker');
-	const $hex    = document.getElementById('hex');
+	// タブ整列: 一番長い変数名の直後のタブストップまで揃える
+	function alignWithTabs(lines) {
+		const valid = lines.filter(l => l[1]);
+		if (valid.length === 0) return '';
+		const maxLen = Math.max(...valid.map(l => l[0].length));
+		const targetCol = (Math.floor(maxLen / TAB_WIDTH) + 1) * TAB_WIDTH;
+		return lines.map(([k, v]) => {
+			if (!v) return k;
+			let col = k.length;
+			let tabs = '';
+			while (col < targetCol) {
+				tabs += '\t';
+				col = (Math.floor(col / TAB_WIDTH) + 1) * TAB_WIDTH;
+			}
+			return k + tabs + v;
+		}).join('\n');
+	}
+
+	const $name    = document.getElementById('name');
+	const $picker  = document.getElementById('picker');
+	const $hex     = document.getElementById('hex');
 	const $palette = document.getElementById('palette');
-	const $scss   = document.getElementById('scss');
-	const $toast  = document.getElementById('toast');
+	const $scss    = document.getElementById('scss');
+	const $toast   = document.getElementById('toast');
 
 	function showToast(msg) {
 		$toast.textContent = msg;
@@ -269,15 +325,58 @@
 	}
 
 	function copy(text) {
-		navigator.clipboard.writeText(text).then(() => showToast('コピーしました: ' + text));
+		if (!text) { showToast('コピーする内容がありません'); return; }
+
+		// file:// で navigator.clipboard が動かない場合に備えてフォールバックを用意
+		const fallback = () => {
+			const ta = document.createElement('textarea');
+			ta.value = text;
+			ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
+			document.body.appendChild(ta);
+			ta.focus();
+			ta.select();
+			let ok = false;
+			try { ok = document.execCommand('copy'); } catch (e) {}
+			document.body.removeChild(ta);
+			showToast(ok ? 'コピーしました' : 'コピーに失敗しました');
+		};
+
+		if (navigator.clipboard && window.isSecureContext) {
+			navigator.clipboard.writeText(text)
+				.then(() => showToast('コピーしました'))
+				.catch(fallback);
+		} else {
+			fallback();
+		}
 	}
 
-	function render() {
-		const name = ($name.value.trim() || 'gray').replace(/[^\w-]/g, '');
-		const base = $hex.value.trim();
-		if (!isValidHex(base)) return;
+	function generate() {
+		const userName = ($name.value.trim() || 'color').replace(/[^\w-]/g, '');
+		const base = normalizeHex($hex.value);
+		if (!base) {
+			showToast('HEX が正しくありません');
+			return;
+		}
+		// 正規化後の hex を入力欄に反映
+		$hex.value = base;
+		$picker.value = base;
 
-		// build palette grid
+		// 無彩色判定: R = G = B なら achromatic として扱う
+		const [r, g, b] = hexToRgb(base);
+		const isAchromatic = (r === g && g === b);
+		const name = isAchromatic ? 'achromatic' : userName;
+
+		// 自動置換の通知
+		const $hint = document.getElementById('name-hint');
+		if (isAchromatic && userName !== 'achromatic') {
+			$hint.textContent = '無彩色を検出 → "' + name + '" で出力';
+			$hint.style.display = '';
+		} else {
+			$hint.textContent = '';
+			$hint.style.display = 'none';
+		}
+
+		// パレットグリッド
 		$palette.innerHTML = '';
 		STEPS.forEach(pct => {
 			const hex = mixWithWhite(base, pct);
@@ -294,32 +393,48 @@
 			$palette.appendChild(sw);
 		});
 
-		// build SCSS output (aligned)
+		// SCSS 出力: suffix-less は primitive ($_color-name) のエイリアス、
+		// -100p 以降は明示的な hex (p は percent の意)
+		// 見出しは差別化のため /* */ ブロックコメント
 		const lines = [];
-		lines.push(['// ' + name, '']);
-		lines.push(['$color-' + name + ':', base + ';']);
-		lines.push(['$color-' + name + '-100:', '$color-' + name + ';']);
+		lines.push(['/* ' + name + ' */', '']);
+		lines.push(['$color-' + name + ':', '$_color-' + name + ';']);
+		lines.push(['$color-' + name + '-100p:', base + ';']);
 		STEPS.filter(p => p !== 100).forEach(pct => {
-			lines.push(['$color-' + name + '-' + pct + ':', mixWithWhite(base, pct) + ';']);
+			lines.push(['$color-' + name + '-' + pct + 'p:', mixWithWhite(base, pct) + ';']);
 		});
-		// align the value column
-		const max = Math.max(...lines.filter(l => l[1]).map(l => l[0].length));
-		const out = lines.map(([k, v]) => {
-			if (!v) return k;
-			return k + ' '.repeat(max - k.length + 2) + v;
-		}).join('\n');
-		$scss.textContent = out;
+		$scss.textContent = alignWithTabs(lines);
 	}
 
-	// events
-	$picker.addEventListener('input', () => { $hex.value = $picker.value; render(); });
-	$hex.addEventListener('input', () => {
-		if (isValidHex($hex.value)) { $picker.value = $hex.value; render(); }
+	function clearAll() {
+		$name.value = '';
+		$hex.value = '';
+		$picker.value = '#ffffff';
+		$palette.innerHTML = '';
+		$scss.textContent = '';
+		$name.focus();
+	}
+
+	// HEX入力欄: 入力中はライブ反映しない（生成ボタンで反映）
+	// ただしカラーピッカーは UI 上即時反映が自然なので連動
+	$picker.addEventListener('input', () => {
+		$hex.value = $picker.value;
+		generate();
 	});
-	$name.addEventListener('input', render);
+
+	// テキスト入力欄で Enter キーを押した時も生成
+	[$name, $hex].forEach(el => {
+		el.addEventListener('keydown', e => {
+			if (e.key === 'Enter') generate();
+		});
+	});
+
+	document.getElementById('generate').addEventListener('click', generate);
+	document.getElementById('clear').addEventListener('click', clearAll);
 	document.getElementById('copy-all').addEventListener('click', () => copy($scss.textContent));
 
-	render();
+	// 初期表示
+	generate();
 </script>
 </body>
 </html>
